@@ -1,10 +1,8 @@
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Modal,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -13,6 +11,12 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
+import {
+  vibrateAction,
+  vibratePrayerComplete,
+  vibratePosition,
+  vibrateRakaatComplete,
+} from "@/lib/haptics";
 import { BodyPosition, DetectionEvent, MotionEngine } from "@/lib/motionEngine";
 import { CalibrationData } from "@/lib/storage";
 
@@ -21,6 +25,7 @@ interface Props {
   prayerName: string;
   expectedRakaat: number;
   calibration: CalibrationData | null;
+  vibrationEnabled: boolean;
   onComplete: (rakaatCount: number, confidence: number, durationMs: number) => void;
   onCancel: () => void;
 }
@@ -66,6 +71,7 @@ export function DetectionModal({
   prayerName,
   expectedRakaat,
   calibration,
+  vibrationEnabled,
   onComplete,
   onCancel,
 }: Props) {
@@ -144,9 +150,7 @@ export function DetectionModal({
       if (event.type === "POSITION_CHANGE" && event.position) {
         setPosition(event.position);
         if (event.confidence !== undefined) setConfidence(event.confidence);
-        if (Platform.OS !== "web") {
-          Haptics.selectionAsync().catch(() => {});
-        }
+        vibratePosition(event.position, vibrationEnabled);
       }
 
       if (event.type === "RAKAH_COMPLETE") {
@@ -154,9 +158,7 @@ export function DetectionModal({
         setRakaatCount(count);
         if (event.fsmState) setFsmState(event.fsmState);
         setEvents((prev) => [`Rak'ah ${count} complete`, ...prev.slice(0, 3)]);
-        if (Platform.OS !== "web") {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-        }
+        vibrateRakaatComplete(vibrationEnabled);
       }
     });
 
@@ -179,6 +181,7 @@ export function DetectionModal({
     const durationMs = Date.now() - startTime;
     const conf = count >= expectedRakaat ? 0.95 : count > 0 ? 0.65 : 0.3;
     engine.stop();
+    vibratePrayerComplete(vibrationEnabled);
     onComplete(count, conf, durationMs);
   }
 

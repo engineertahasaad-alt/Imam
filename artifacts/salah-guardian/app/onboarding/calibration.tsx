@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -14,6 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
+import { vibrateSuccess } from "@/lib/haptics";
 import { useColors } from "@/hooks/useColors";
 import { MotionEngine } from "@/lib/motionEngine";
 import { CalibrationData } from "@/lib/storage";
@@ -106,11 +106,7 @@ export default function CalibrationScreen() {
       const key = STEPS[currentStep].key;
       setRecorded((prev) => ({ ...prev, [key]: avg }));
       setStepState("done");
-      if (Platform.OS !== "web") {
-        Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success
-        ).catch(() => {});
-      }
+      vibrateSuccess(true);
     });
   }
 

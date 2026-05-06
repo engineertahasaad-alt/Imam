@@ -1,8 +1,6 @@
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import React, { useState } from "react";
 import {
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -17,6 +15,7 @@ import { NextPrayerCard } from "@/components/NextPrayerCard";
 import { PrayerTimesList } from "@/components/PrayerTimesList";
 import { StreakCard } from "@/components/StreakCard";
 import { useApp } from "@/context/AppContext";
+import { vibrateAction, vibratePrayerComplete } from "@/lib/haptics";
 import { useColors } from "@/hooks/useColors";
 import { getRakaatCount } from "@/lib/prayerCalculator";
 
@@ -34,7 +33,10 @@ export default function HomeScreen() {
     markPrayerDetected,
     calibration,
     refreshPrayerTimes,
+    settings,
   } = useApp();
+
+  const vibrationEnabled = settings?.vibrationEnabled ?? true;
 
   const [detectionVisible, setDetectionVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -46,9 +48,7 @@ export default function HomeScreen() {
   }
 
   function startDetection() {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    }
+    vibrateAction(vibrationEnabled);
     setDetectionVisible(true);
   }
 
@@ -59,11 +59,7 @@ export default function HomeScreen() {
   ) {
     setDetectionVisible(false);
     await markPrayerDetected(currentPrayer, confidence, rakaatCount, durationMs);
-    if (Platform.OS !== "web") {
-      Haptics.notificationAsync(
-        Haptics.NotificationFeedbackType.Success
-      ).catch(() => {});
-    }
+    vibratePrayerComplete(vibrationEnabled);
   }
 
   const paddingBottom =
@@ -184,6 +180,7 @@ export default function HomeScreen() {
         prayerName={currentPrayer || nextPrayer}
         expectedRakaat={getRakaatCount(currentPrayer || nextPrayer)}
         calibration={calibration}
+        vibrationEnabled={vibrationEnabled}
         onComplete={handleDetectionComplete}
         onCancel={() => setDetectionVisible(false)}
       />
