@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/"
+title = "Salah Guardian"
+version = "1.0.0"
+id = "artifacts/salah-guardian"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/" ]
+localPort = 25111
+
+[services.development]
+run = "pnpm --filter @workspace/salah-guardian run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/salah-guardian", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/salah-guardian", "run", "serve" ]
+
+[services.env]
+PORT = "25111"
+BASE_PATH = "/"

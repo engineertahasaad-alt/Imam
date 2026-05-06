@@ -1,0 +1,339 @@
+You are a Senior Software Engineer, AI Product Architect, and Android Sensor Systems Specialist.
+
+Your task is to design and build a complete Android application called:
+
+“Salah Guardian”
+
+━━━━━━━━━━━━━━━━━━━━
+# CORE IDEA
+━━━━━━━━━━━━━━━━━━━━
+
+The purpose of the app is to help prevent users from forgetting prayers by detecting actual prayer movements using only smartphone sensors.
+
+The phone will usually be inside the user’s pants pocket during prayer.
+
+The application must detect:
+- Standing
+- Bowing (Ruku)
+- Sujood (Prostration)
+- Sitting
+- Salam
+
+using only:
+- Accelerometer
+- Gyroscope
+- Gravity Sensor
+- Linear Acceleration
+
+NO camera.
+NO microphone.
+NO smartwatch.
+NO cloud dependency.
+
+Everything must work fully offline.
+
+━━━━━━━━━━━━━━━━━━━━
+# PRIMARY GOAL
+━━━━━━━━━━━━━━━━━━━━
+
+The app should confirm that the user actually prayed, instead of relying on manual check-ins or button presses.
+
+If prayer time passes without detecting a valid prayer sequence:
+the app should trigger intelligent reminders.
+
+━━━━━━━━━━━━━━━━━━━━
+# REQUIRED OUTPUT
+━━━━━━━━━━━━━━━━━━━━
+
+Build:
+
+1. Complete Android application
+2. Modern UI/UX
+3. Sensor-based motion detection engine
+4. Prayer tracking system
+5. Smart reminder system
+6. Calibration system
+7. Local database
+8. APK-ready production project
+
+━━━━━━━━━━━━━━━━━━━━
+# TECHNOLOGY STACK
+━━━━━━━━━━━━━━━━━━━━
+
+Choose the best technical stack for:
+- accurate sensor processing
+- background execution reliability
+- low battery consumption
+- production stability
+
+Preferred options:
+- Kotlin Native (preferred if sensor access is superior)
+- Flutter
+- React Native
+
+You must first analyze and justify the best stack choice before implementation.
+
+Use:
+- SQLite for local database
+- Clean Architecture
+- MVVM or equivalent scalable architecture
+
+━━━━━━━━━━━━━━━━━━━━
+# APPLICATION FLOW
+━━━━━━━━━━━━━━━━━━━━
+
+On first launch:
+
+1. Welcome screen
+Explain clearly:
+- the app does not spy on users
+- no audio recording
+- no video recording
+- only motion sensors are used
+
+2. Request permissions:
+- Notifications
+- Exact alarms
+- Background activity
+- Ignore battery optimization
+
+3. Prayer setup:
+- Select city or GPS
+- Select prayer calculation method
+
+4. Launch Calibration Wizard
+
+━━━━━━━━━━━━━━━━━━━━
+# CALIBRATION SYSTEM
+━━━━━━━━━━━━━━━━━━━━
+
+Build a lightweight personalized calibration system.
+
+The app should ask the user to:
+- stand still
+- perform ruku
+- perform sujood
+- sit
+
+The app then captures:
+- motion angles
+- orientation
+- acceleration patterns
+
+and creates a personal Motion Profile.
+
+The system must support:
+- right pocket
+- left pocket
+- upside-down phone
+- different orientations
+
+The detection engine must be adaptive and tolerant.
+
+━━━━━━━━━━━━━━━━━━━━
+# PRAYER DETECTION ENGINE
+━━━━━━━━━━━━━━━━━━━━
+
+Build a robust sensor analysis engine.
+
+Use:
+- Finite State Machine (FSM)
+- Motion thresholds
+- Noise filtering
+- Signal smoothing
+- Confidence scoring
+
+Prayer should only be confirmed when detecting a logical movement sequence such as:
+
+Standing
+→ Ruku
+→ Standing
+→ Sujood
+→ Sitting
+→ Sujood
+
+with realistic timing constraints.
+
+The system must reject:
+- random movement
+- walking
+- bending during work
+- sitting normally
+- accidental motions
+
+━━━━━━━━━━━━━━━━━━━━
+# CONFIDENCE SYSTEM
+━━━━━━━━━━━━━━━━━━━━
+
+Every prayer detection must produce a confidence score.
+
+Example:
+- 90%+ = highly confident prayer
+- 50% = uncertain motion
+- below threshold = ignored
+
+Store confidence values in logs.
+
+━━━━━━━━━━━━━━━━━━━━
+# PRAYER TIMES
+━━━━━━━━━━━━━━━━━━━━
+
+Implement reliable offline prayer time calculation.
+
+Support:
+- Fajr
+- Dhuhr
+- Asr
+- Maghrib
+- Isha
+
+Support:
+- multiple calculation methods
+- daylight saving adjustments
+- offline functionality
+
+━━━━━━━━━━━━━━━━━━━━
+# SMART REMINDER SYSTEM
+━━━━━━━━━━━━━━━━━━━━
+
+After prayer time begins:
+
+If no prayer is detected:
+- send soft reminder
+- then stronger reminder
+- then vibration
+- then fullscreen alert
+
+If prayer is detected:
+all reminders stop automatically.
+
+━━━━━━━━━━━━━━━━━━━━
+# CONTEXT-AWARE REMINDERS
+━━━━━━━━━━━━━━━━━━━━
+
+If the user is:
+- driving
+- sleeping
+- running
+- away from phone
+
+reduce reminder intensity or postpone reminders intelligently.
+
+Use Android Activity Recognition APIs if appropriate.
+
+━━━━━━━━━━━━━━━━━━━━
+# LOCAL DATABASE
+━━━━━━━━━━━━━━━━━━━━
+
+Create tables/entities for:
+- prayers
+- prayer_logs
+- calibration_profiles
+- settings
+- notification_history
+
+Store:
+- prayer detected or not
+- detection timestamp
+- confidence score
+- estimated prayer duration
+- estimated rakaat count
+
+━━━━━━━━━━━━━━━━━━━━
+# HOME SCREEN
+━━━━━━━━━━━━━━━━━━━━
+
+Design a modern minimal UI.
+
+Main dashboard should display:
+- current prayer
+- remaining time
+- prayer completion status
+- streak
+- consistency statistics
+- latest detected prayer
+
+━━━━━━━━━━━━━━━━━━━━
+# ANALYTICS & STATS
+━━━━━━━━━━━━━━━━━━━━
+
+Include:
+- weekly consistency
+- detected prayers count
+- streak tracking
+- most missed prayer
+- progress charts
+
+━━━━━━━━━━━━━━━━━━━━
+# PERFORMANCE REQUIREMENTS
+━━━━━━━━━━━━━━━━━━━━
+
+Critical requirements:
+- low battery usage
+- efficient background execution
+- Android modern restrictions compliance
+- prevent unnecessary wake locks
+
+Use Foreground Service only when necessary.
+
+━━━━━━━━━━━━━━━━━━━━
+# DESIGN REQUIREMENTS
+━━━━━━━━━━━━━━━━━━━━
+
+Style:
+- Minimal
+- Modern Islamic aesthetic
+- Dark mode support
+- Smooth animations
+- Arabic RTL support
+- Clean typography
+
+━━━━━━━━━━━━━━━━━━━━
+# DEVELOPMENT REQUIREMENTS
+━━━━━━━━━━━━━━━━━━━━
+
+Before writing code:
+
+1. Analyze the project technically
+2. Recommend the best architecture
+3. Explain why the stack was chosen
+4. Explain sensor limitations
+5. Explain expected detection accuracy
+6. Explain false positive mitigation strategy
+7. Explain battery optimization strategy
+
+Then begin implementation gradually.
+
+━━━━━━━━━━━━━━━━━━━━
+# CODE REQUIREMENTS
+━━━━━━━━━━━━━━━━━━━━
+
+Generate:
+- full project structure
+- all required files
+- complete source code
+- setup instructions
+- installation steps
+- APK generation steps
+- beginner-friendly explanations
+
+Do not assume any existing files or setup.
+
+Start completely from zero.
+
+━━━━━━━━━━━━━━━━━━━━
+# FINAL EXPECTATION
+━━━━━━━━━━━━━━━━━━━━
+
+The final result must be:
+- production-grade
+- scalable
+- maintainable
+- cleanly architected
+- modular
+- APK-ready
+- future-proof
+
+Use clean code principles and proper separation of concerns.
+
+This must be built as a real product, not a demo project.

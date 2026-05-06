@@ -1,0 +1,69 @@
+{
+  "expo": {
+    "name": "Salah Guardian",
+    "slug": "salah-guardian",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "salah-guardian",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#0d1321"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.salahguardian.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Used to calculate accurate prayer times for your location.",
+        "NSLocationAlwaysUsageDescription": "Used to calculate accurate prayer times for your location.",
+        "NSMotionUsageDescription": "Used to detect prayer movements using motion sensors."
+      }
+    },
+    "android": {
+      "package": "com.salahguardian.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "USE_EXACT_ALARM",
+        "SCHEDULE_EXACT_ALARM"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://replit.com/"
+        }
+      ],
+      "expo-font",
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#34d399",
+          "sounds": []
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Salah Guardian needs location to calculate prayer times for your area.",
+          "locationWhenInUsePermission": "Salah Guardian needs location to calculate prayer times for your area."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
