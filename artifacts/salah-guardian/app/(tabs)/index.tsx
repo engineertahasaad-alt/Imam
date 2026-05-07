@@ -16,6 +16,7 @@ import { DetectionModal } from "@/components/DetectionModal";
 import { NextPrayerCard } from "@/components/NextPrayerCard";
 import { PrayerAlertBanner } from "@/components/PrayerAlertBanner";
 import { PrayerTimesList } from "@/components/PrayerTimesList";
+import { QiblaCard } from "@/components/QiblaCard";
 import { StreakCard } from "@/components/StreakCard";
 import { TrainingModal } from "@/components/TrainingModal";
 import { useApp } from "@/context/AppContext";
@@ -139,6 +140,14 @@ export default function HomeScreen() {
 
         {/* Streak stats */}
         <StreakCard streak={streak} todayCount={todayDetectedCount} />
+
+        {/* Qibla compass */}
+        {settings.latitude && settings.longitude && (
+          <QiblaCard
+            userLat={settings.latitude}
+            userLng={settings.longitude}
+          />
+        )}
 
         {/* Today's prayers */}
         {prayerStatuses.length > 0 ? (

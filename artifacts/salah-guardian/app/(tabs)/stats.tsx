@@ -107,10 +107,10 @@ export default function StatsScreen() {
 
   const totalSessions = trainingSessions.length;
   const bestScore = totalSessions > 0
-    ? Math.max(...trainingSessions.map(s => s.overallScore))
+    ? Math.round(Math.max(...trainingSessions.map(s => s.qualityScore)) * 100)
     : 0;
   const avgScore = totalSessions > 0
-    ? Math.round(trainingSessions.reduce((s, t) => s + t.overallScore, 0) / totalSessions)
+    ? Math.round(trainingSessions.reduce((s, t) => s + t.qualityScore, 0) / totalSessions * 100)
     : 0;
 
   const paddingBottom =
