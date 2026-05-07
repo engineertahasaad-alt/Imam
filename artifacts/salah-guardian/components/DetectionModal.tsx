@@ -100,6 +100,9 @@ export function DetectionModal({
   const [events, setEvents]              = useState<string[]>([]);
   const [startTime]                      = useState(Date.now());
   const [elapsed, setElapsed]            = useState(0);
+  const [barometerAvailable, setBarometerAvailable] = useState(false);
+  const [altitudeDrop, setAltitudeDrop]  = useState(0);
+  const [holdDurationMs, setHoldDurationMs] = useState(3000);
 
   const engineRef  = useRef<MotionEngine | null>(null);
   const pulseAnim  = useRef(new Animated.Value(1)).current;
@@ -155,6 +158,9 @@ export function DetectionModal({
     setStability(1);
     setFsmState("STANDING");
     setEvents([]);
+    setBarometerAvailable(false);
+    setAltitudeDrop(0);
+    setHoldDurationMs(3000);
 
     const engine = new MotionEngine((event: DetectionEvent) => {
 
@@ -167,6 +173,9 @@ export function DetectionModal({
         if (event.expectedPosition)  setExpected(event.expectedPosition);
         if (event.nextExpectedPosition) setNextExpected(event.nextExpectedPosition);
         if (event.holdProgress !== undefined) setHoldProgress(event.holdProgress);
+        if (event.barometerAvailable !== undefined) setBarometerAvailable(event.barometerAvailable);
+        if (event.altitudeDrop       !== undefined) setAltitudeDrop(event.altitudeDrop);
+        if (event.holdDurationMs     !== undefined) setHoldDurationMs(event.holdDurationMs);
       }
 
       // ── Posture validation ──────────────────────────────────────────────
@@ -178,6 +187,9 @@ export function DetectionModal({
         if (event.fsmState)            setFsmState(event.fsmState);
         if (event.isCorrect !== undefined) setIsCorrect(event.isCorrect);
         if (event.holdProgress !== undefined) setHoldProgress(event.holdProgress);
+        if (event.barometerAvailable !== undefined) setBarometerAvailable(event.barometerAvailable);
+        if (event.altitudeDrop       !== undefined) setAltitudeDrop(event.altitudeDrop);
+        if (event.holdDurationMs     !== undefined) setHoldDurationMs(event.holdDurationMs);
 
         // ── WRONG posture (including repeats) ──────────────────────────
         if (event.isCorrect === false) {
@@ -268,8 +280,9 @@ export function DetectionModal({
                            isCorrect === false ? "#f87171" :
                                                 colors.mutedForeground;
 
-  const holdSecsRemaining = ((1 - holdProgress) * 3).toFixed(1);
+  const holdSecsRemaining = ((1 - holdProgress) * (holdDurationMs / 1000)).toFixed(1);
   const showHoldBar = isCorrect === true && !isConfirmed && holdProgress > 0;
+  const baroBoostActive = barometerAvailable && holdDurationMs < 3000 && isCorrect === true && !isConfirmed;
 
   const fsmIdx = FSM_STEPS.indexOf(fsmState as (typeof FSM_STEPS)[number]);
 
@@ -430,6 +443,37 @@ export function DetectionModal({
               Hold still — stabilizing…
             </Text>
           )}
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          {/* Barometer status chip */}
+          <View style={styles.baroRow}>
+            <View
+              style={[
+                styles.baroChip,
+                {
+                  backgroundColor: barometerAvailable ? colors.primary + "15" : colors.secondary,
+                  borderColor:     barometerAvailable ? colors.primary + "40" : colors.border,
+                },
+              ]}
+            >
+              <Feather
+                name={barometerAvailable ? "thermometer" : "thermometer"}
+                size={11}
+                color={barometerAvailable ? colors.primary : colors.mutedForeground}
+              />
+              <Text style={[styles.baroChipText, { color: barometerAvailable ? colors.primary : colors.mutedForeground }]}>
+                {barometerAvailable
+                  ? `Barometer  ${altitudeDrop < -0.32 ? "· Sujood confirmed ⚡" : altitudeDrop < -0.15 ? `· ${Math.abs(altitudeDrop).toFixed(2)}m drop` : "· active"}`
+                  : "Barometer unavailable"}
+              </Text>
+            </View>
+            {baroBoostActive && (
+              <View style={[styles.baroBoostBadge, { backgroundColor: "#f59e0b20", borderColor: "#f59e0b40" }]}>
+                <Text style={{ fontSize: 10, color: "#f59e0b", fontWeight: "700" }}>⚡ Fast confirm</Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* ── FSM step dots ─────────────────────────────────────────────────── */}
@@ -601,6 +645,10 @@ const styles = StyleSheet.create({
   barFill:      { height: 5, borderRadius: 3 },
   divider:      { height: 1, marginVertical: 8 },
   stabilityHint:{ fontSize: 10, marginTop: 4, textAlign: "center" },
+  baroRow:       { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  baroChip:      { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
+  baroChipText:  { fontSize: 10, fontWeight: "600" },
+  baroBoostBadge:{ borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
 
   // FSM card
   fsmCard:           { borderRadius: 14, borderWidth: 1, padding: 12, marginBottom: 10 },

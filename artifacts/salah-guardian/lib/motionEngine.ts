@@ -1,4 +1,4 @@
-import { Accelerometer, Gyroscope } from "expo-sensors";
+import { Accelerometer, Barometer, Gyroscope } from "expo-sensors";
 import { Platform } from "react-native";
 
 export type BodyPosition =
@@ -32,14 +32,19 @@ export interface DetectionEvent {
   isCorrect?:     boolean;
   /** true = held the correct position for the required 3 seconds → FSM advances */
   isConfirmed?:   boolean;
-  /** 0–1, progress through the 3-second confirmation hold */
-  holdProgress?:  number;
-  rakaatCount?:   number;
-  confidence?:    number;
-  stability?:     number;
-  fsmState?:      string;
-  timestamp:      number;
-  message?:       string;
+  /** 0–1, progress through the confirmation hold */
+  holdProgress?:       number;
+  /** Duration of the current hold window in ms (3000 default, 1500 barometer-boosted) */
+  holdDurationMs?:     number;
+  rakaatCount?:        number;
+  confidence?:         number;
+  stability?:          number;
+  fsmState?:           string;
+  timestamp:           number;
+  message?:            string;
+  barometerAvailable?: boolean;
+  /** Altitude relative to detection start (m). Negative = phone is lower than start position. */
+  altitudeDrop?:       number;
 }
 
 type FSMState =
@@ -67,6 +72,12 @@ const FSM_STUCK_TIMEOUT_MS   = 45_000;
 
 /** Correct posture must be held this long before it counts */
 const CORRECT_HOLD_MS        = 3_000;
+/** Faster hold when barometer confirms Sujood altitude drop */
+const BARO_CONFIRMED_HOLD_MS = 1_500;
+/** Barometer altitude drop threshold for Sujood confirmation (meters, negative = lower) */
+const BARO_SUJOOD_ALT_M      = -0.32;
+/** hPa → meters conversion at sea level */
+const HPA_TO_M               = 8.43;
 /** Wrong vibration re-fires at this interval (continuous) */
 const WRONG_REPEAT_MS        = 2_000;
 /** How often holdProgress is updated during the hold countdown */
@@ -91,6 +102,14 @@ export class MotionEngine {
   // ── Sensor subscriptions ─────────────────────────────────────────────────
   private accelSub: ReturnType<typeof Accelerometer.addListener> | null = null;
   private gyroSub:  ReturnType<typeof Gyroscope.addListener>    | null = null;
+  private baroSub:  ReturnType<typeof Barometer.addListener>    | null = null;
+
+  // ── Barometer ─────────────────────────────────────────────────────────────
+  private baroAvailable = false;
+  private altitudeDrop  = 0;
+  private altBaseline:  number | null = null;
+  /** Dynamic hold duration — reduced when barometer confirms Sujood */
+  private currentHoldMs = CORRECT_HOLD_MS;
 
   // ── Smoothed gravity ─────────────────────────────────────────────────────
   private gx = 0; private gy = 0; private gz = 0;
@@ -199,7 +218,12 @@ export class MotionEngine {
     this.pendingCorrectPos  = null;
     this.window             = [];
     this.windowConf         = [];
+    this.baroAvailable      = false;
+    this.altitudeDrop       = 0;
+    this.altBaseline        = null;
+    this.currentHoldMs      = CORRECT_HOLD_MS;
     this.startSensors();
+    this.startBarometer();
     this.startStuckGuard();
   }
 
@@ -232,6 +256,27 @@ export class MotionEngine {
   private stopSensors() {
     this.accelSub?.remove(); this.accelSub = null;
     this.gyroSub?.remove();  this.gyroSub  = null;
+    this.baroSub?.remove();  this.baroSub  = null;
+  }
+
+  private startBarometer() {
+    if (Platform.OS === "web") return;
+    Barometer.isAvailableAsync().then((ok) => {
+      if (!ok) return;
+      this.baroAvailable = true;
+      Barometer.setUpdateInterval(500);
+      this.baroSub = Barometer.addListener(({ pressure, relativeAltitude }) => {
+        if (typeof relativeAltitude === "number") {
+          // iOS: already a relative altitude change in meters from subscription start
+          this.altitudeDrop = relativeAltitude;
+        } else {
+          // Android: compute from pressure differential
+          if (this.altBaseline === null) this.altBaseline = pressure;
+          // Pressure INCREASES when phone goes DOWN → altitudeDrop is negative when lower
+          this.altitudeDrop = (this.altBaseline - pressure) * HPA_TO_M;
+        }
+      });
+    });
   }
 
   private clearAllTimers() {
@@ -462,10 +507,13 @@ export class MotionEngine {
         expectedPosition:      this.getExpectedPosition(),
         nextExpectedPosition:  this.getNextExpectedPosition(),
         holdProgress:          this.pendingCorrectPos !== null
-                                 ? clamp((now - this.correctHoldStartAt) / CORRECT_HOLD_MS, 0, 1)
+                                 ? clamp((now - this.correctHoldStartAt) / this.currentHoldMs, 0, 1)
                                  : 0,
+        holdDurationMs:        this.currentHoldMs,
         fsmState:              this.fsmState,
         timestamp:             now,
+        barometerAvailable:    this.baroAvailable,
+        altitudeDrop:          this.altitudeDrop,
       });
     }
 
@@ -531,7 +579,14 @@ export class MotionEngine {
     confidence: number,
     startTime: number
   ) {
-    this.pendingCorrectPos = pos;
+    // Barometer boost: halve the hold time when sensor confirms Sujood altitude
+    const baroConfirmsSujood =
+      pos === "SUJOOD" &&
+      this.baroAvailable &&
+      this.altitudeDrop < BARO_SUJOOD_ALT_M;
+    const holdMs = baroConfirmsSujood ? BARO_CONFIRMED_HOLD_MS : CORRECT_HOLD_MS;
+    this.currentHoldMs      = holdMs;
+    this.pendingCorrectPos  = pos;
     this.correctHoldStartAt = startTime;
 
     // Emit immediate feedback (progress = 0)
@@ -543,16 +598,19 @@ export class MotionEngine {
       isCorrect:             true,
       isConfirmed:           false,
       holdProgress:          0,
+      holdDurationMs:        holdMs,
       confidence,
       fsmState:              this.fsmState,
       timestamp:             startTime,
+      barometerAvailable:    this.baroAvailable,
+      altitudeDrop:          this.altitudeDrop,
     });
 
     // Tick progress updates
     this.correctHoldTickTimer = setInterval(() => {
       if (this.pendingCorrectPos !== pos) return;
       const elapsed  = Date.now() - this.correctHoldStartAt;
-      const progress = clamp(elapsed / CORRECT_HOLD_MS, 0, 1);
+      const progress = clamp(elapsed / holdMs, 0, 1);
       this.onEvent?.({
         type:                  "POSTURE_VALIDATION",
         position:              pos,
@@ -561,13 +619,16 @@ export class MotionEngine {
         isCorrect:             true,
         isConfirmed:           false,
         holdProgress:          progress,
+        holdDurationMs:        holdMs,
         confidence,
         fsmState:              this.fsmState,
         timestamp:             Date.now(),
+        barometerAvailable:    this.baroAvailable,
+        altitudeDrop:          this.altitudeDrop,
       });
     }, HOLD_PROGRESS_TICK_MS);
 
-    // Fire CONFIRMED after 3 seconds → advance FSM
+    // Fire CONFIRMED after holdMs → advance FSM
     this.correctHoldTimer = setTimeout(() => {
       this.clearCorrectHold();
 
@@ -580,14 +641,17 @@ export class MotionEngine {
         isCorrect:             true,
         isConfirmed:           true,
         holdProgress:          1,
+        holdDurationMs:        holdMs,
         confidence,
         fsmState:              this.fsmState,
         timestamp:             now,
+        barometerAvailable:    this.baroAvailable,
+        altitudeDrop:          this.altitudeDrop,
       });
 
       // Now advance the FSM
       this.updateFSM(pos, confidence);
-    }, CORRECT_HOLD_MS);
+    }, holdMs);
   }
 
   // ── Wrong-posture continuous vibration ────────────────────────────────────
