@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Platform,
   RefreshControl,
@@ -14,11 +14,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DetectionModal } from "@/components/DetectionModal";
 import { NextPrayerCard } from "@/components/NextPrayerCard";
+import { PrayerAlertBanner } from "@/components/PrayerAlertBanner";
 import { PrayerTimesList } from "@/components/PrayerTimesList";
 import { StreakCard } from "@/components/StreakCard";
 import { TrainingModal } from "@/components/TrainingModal";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
+
+const ALERT_THRESHOLD_MS = 5 * 60 * 1000;
 
 const RAKAAT_MAP: Record<string, number> = {
   Fajr: 2, Dhuhr: 4, Asr: 4, Maghrib: 3, Isha: 4,
@@ -51,6 +54,32 @@ export default function HomeScreen() {
   const [detectionVisible, setDetectionVisible] = useState(false);
   const [trainingVisible, setTrainingVisible]   = useState(false);
   const [refreshing, setRefreshing]             = useState(false);
+
+  // Banner state: track which prayer triggered it and whether user dismissed it
+  const [bannerPrayer, setBannerPrayer]       = useState<string | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const prevNextPrayerRef                     = useRef<string>("");
+
+  // Show banner when next prayer is within 5 minutes
+  useEffect(() => {
+    if (!nextPrayer) return;
+    // New prayer approaching — reset dismissed flag
+    if (nextPrayer !== prevNextPrayerRef.current) {
+      prevNextPrayerRef.current = nextPrayer;
+      setBannerDismissed(false);
+    }
+    if (timeRemaining > 0 && timeRemaining <= ALERT_THRESHOLD_MS) {
+      setBannerPrayer(nextPrayer);
+    }
+  }, [timeRemaining, nextPrayer]);
+
+  // Has the alerted prayer already been detected today?
+  const bannerPrayerDetected =
+    bannerPrayer != null &&
+    prayerStatuses.find((p) => p.name === bannerPrayer)?.detected === true;
+
+  const showBanner =
+    bannerPrayer !== null && !bannerDismissed && !bannerPrayerDetected;
 
   const vibrationEnabled  = settings?.vibrationEnabled  ?? true;
   const vibrationStrength = settings?.vibrationStrength ?? "high";
@@ -183,6 +212,18 @@ export default function HomeScreen() {
         onClose={() => setTrainingVisible(false)}
         onCalibrationImproved={refreshCalibration}
       />
+
+      {showBanner && bannerPrayer && (
+        <PrayerAlertBanner
+          prayerName={bannerPrayer}
+          timeRemainingMs={timeRemaining}
+          onStartDetection={() => {
+            setBannerDismissed(true);
+            setDetectionVisible(true);
+          }}
+          onDismiss={() => setBannerDismissed(true)}
+        />
+      )}
     </>
   );
 }
