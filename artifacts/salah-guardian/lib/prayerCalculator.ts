@@ -78,16 +78,13 @@ function sunPosition(jd: number): SunPos {
 
 function hourAngle(angle: number, lat: number, dec: number): number {
   const cosHA =
-    (-sind(angle) - sind(lat) * sind(dec)) / (cosd(lat) * cosd(dec));
+    (sind(angle) - sind(lat) * sind(dec)) / (cosd(lat) * cosd(dec));
   if (cosHA < -1 || cosHA > 1) return -1;
   return acosd(cosHA) / 15;
 }
 
 function asrAngle(lat: number, dec: number, factor: number): number {
-  const targetAngle = deg(
-    Math.atan(1 / (factor + tand(Math.abs(lat - dec))))
-  );
-  return -targetAngle;
+  return deg(Math.atan(1 / (factor + tand(Math.abs(lat - dec)))));
 }
 
 export interface PrayerTimes {
