@@ -99,6 +99,7 @@ export function DetectionModal({
   const [fsmState, setFsmState]          = useState("STANDING");
   const [events, setEvents]              = useState<string[]>([]);
   const [startTime]                      = useState(Date.now());
+  const [elapsed, setElapsed]            = useState(0);
 
   const engineRef  = useRef<MotionEngine | null>(null);
   const pulseAnim  = useRef(new Animated.Value(1)).current;
@@ -109,6 +110,13 @@ export function DetectionModal({
   useEffect(() => {
     if (visible) startDetection();
     return () => { engineRef.current?.stop(); };
+  }, [visible]);
+
+  useEffect(() => {
+    if (!visible) return;
+    setElapsed(0);
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
+    return () => clearInterval(id);
   }, [visible]);
 
   useEffect(() => {
@@ -280,9 +288,17 @@ export function DetectionModal({
       >
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.foreground }]}>
-            {prayerName || "Prayer"} — Live Detection
-          </Text>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={[styles.title, { color: colors.foreground }]}>
+              {prayerName || "Prayer"} — Live Detection
+            </Text>
+            <View style={styles.timerRow}>
+              <Feather name="clock" size={11} color={colors.mutedForeground} />
+              <Text style={[styles.timerText, { color: colors.mutedForeground }]}>
+                {String(Math.floor(elapsed / 60)).padStart(2, "0")}:{String(elapsed % 60).padStart(2, "0")}
+              </Text>
+            </View>
+          </View>
           <TouchableOpacity
             onPress={onCancel}
             style={[styles.iconBtn, { backgroundColor: colors.secondary }]}
@@ -551,9 +567,11 @@ export function DetectionModal({
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20 },
 
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
-  title:  { fontSize: 17, fontWeight: "700", flex: 1, marginRight: 12 },
-  iconBtn:{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  header:    { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
+  title:     { fontSize: 17, fontWeight: "700" },
+  timerRow:  { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
+  timerText: { fontSize: 12, fontWeight: "600", fontVariant: ["tabular-nums"] as any },
+  iconBtn:   { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
 
   centerSection: { alignItems: "center", marginBottom: 12 },
   positionCircle:{ width: 112, height: 112, borderRadius: 56, borderWidth: 2, alignItems: "center", justifyContent: "center", marginBottom: 8 },
