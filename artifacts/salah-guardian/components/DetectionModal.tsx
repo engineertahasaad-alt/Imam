@@ -417,16 +417,17 @@ export function DetectionModal({
         </View>
 
         {/* ── FSM step dots ─────────────────────────────────────────────────── */}
-        <View style={styles.fsmRow}>
-          {FSM_STEPS.map((step, i) => {
-            const isPast    = i < fsmIdx;
-            const isCurrent = i === fsmIdx;
-            return (
-              <React.Fragment key={step}>
-                {i > 0 && (
-                  <View style={[styles.fsmLine, { backgroundColor: isPast ? colors.primary : colors.border }]} />
-                )}
-                <View style={styles.fsmStep}>
+        <View style={[styles.fsmCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {/* Progress dots row */}
+          <View style={styles.fsmRow}>
+            {FSM_STEPS.map((step, i) => {
+              const isPast    = i < fsmIdx;
+              const isCurrent = i === fsmIdx;
+              return (
+                <React.Fragment key={step}>
+                  {i > 0 && (
+                    <View style={[styles.fsmLine, { backgroundColor: isPast ? colors.primary : colors.border }]} />
+                  )}
                   <View
                     style={[
                       styles.fsmDot,
@@ -439,15 +440,52 @@ export function DetectionModal({
                       },
                     ]}
                   />
+                </React.Fragment>
+              );
+            })}
+          </View>
+
+          {/* Vertical step list */}
+          <View style={styles.fsmStepList}>
+            {FSM_STEPS.map((step, i) => {
+              const isPast    = i < fsmIdx;
+              const isCurrent = i === fsmIdx;
+              return (
+                <View key={step} style={styles.fsmStepRow}>
+                  <View
+                    style={[
+                      styles.fsmStepBullet,
+                      {
+                        backgroundColor:
+                          isCurrent ? colors.primary :
+                          isPast    ? colors.primary + "55" :
+                                      colors.border,
+                      },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.fsmStepName,
+                      {
+                        color:      isCurrent ? colors.primary : isPast ? colors.foreground : colors.mutedForeground,
+                        fontWeight: isCurrent ? "700" : "400",
+                      },
+                    ]}
+                  >
+                    {FSM_LABELS[step]}
+                  </Text>
                   {isCurrent && (
-                    <Text style={[styles.fsmStepLabel, { color: colors.primary }]} numberOfLines={1}>
-                      {FSM_LABELS[step]}
-                    </Text>
+                    <View style={[styles.fsmCurrentBadge, { backgroundColor: colors.primary + "20" }]}>
+                      <Text style={[styles.fsmCurrentBadgeText, { color: colors.primary }]}>now</Text>
+                    </View>
+                  )}
+                  {isPast && (
+                    <Feather name="check" size={11} color={colors.primary + "99"} />
                   )}
                 </View>
-              </React.Fragment>
-            );
-          })}
+              );
+            })}
+          </View>
         </View>
 
         {/* ── Rak'aat counter ─────────────────────────────────────────────── */}
@@ -546,12 +584,18 @@ const styles = StyleSheet.create({
   divider:      { height: 1, marginVertical: 8 },
   stabilityHint:{ fontSize: 10, marginTop: 4, textAlign: "center" },
 
-  // FSM
-  fsmRow:      { flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 10, paddingBottom: 22, overflow: "visible" },
-  fsmStep:     { alignItems: "center", overflow: "visible" },
-  fsmDot:      { width: 10, height: 10, borderRadius: 5 },
-  fsmLine:     { flex: 1, height: 2, marginHorizontal: 2 },
-  fsmStepLabel:{ fontSize: 9, fontWeight: "600", marginTop: 3, position: "absolute", top: 14, width: 56, textAlign: "center" },
+  // FSM card
+  fsmCard:           { borderRadius: 14, borderWidth: 1, padding: 12, marginBottom: 10 },
+  fsmRow:            { flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 12 },
+  fsmDot:            { width: 10, height: 10, borderRadius: 5 },
+  fsmLine:           { flex: 1, height: 2, marginHorizontal: 2 },
+  // Vertical step list
+  fsmStepList:       { gap: 6 },
+  fsmStepRow:        { flexDirection: "row", alignItems: "center", gap: 8 },
+  fsmStepBullet:     { width: 7, height: 7, borderRadius: 4 },
+  fsmStepName:       { fontSize: 12, flex: 1 },
+  fsmCurrentBadge:   { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 },
+  fsmCurrentBadgeText: { fontSize: 9, fontWeight: "700" },
 
   // Rak'aat
   rakaatCard:   { borderRadius: 14, borderWidth: 1, padding: 12, alignItems: "center", marginBottom: 10 },
