@@ -547,11 +547,11 @@ const styles = StyleSheet.create({
   stabilityHint:{ fontSize: 10, marginTop: 4, textAlign: "center" },
 
   // FSM
-  fsmRow:      { flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 10 },
-  fsmStep:     { alignItems: "center" },
+  fsmRow:      { flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 10, paddingBottom: 22, overflow: "visible" },
+  fsmStep:     { alignItems: "center", overflow: "visible" },
   fsmDot:      { width: 10, height: 10, borderRadius: 5 },
   fsmLine:     { flex: 1, height: 2, marginHorizontal: 2 },
-  fsmStepLabel:{ fontSize: 9, fontWeight: "600", marginTop: 3, position: "absolute", top: 12, width: 52, textAlign: "center" },
+  fsmStepLabel:{ fontSize: 9, fontWeight: "600", marginTop: 3, position: "absolute", top: 14, width: 56, textAlign: "center" },
 
   // Rak'aat
   rakaatCard:   { borderRadius: 14, borderWidth: 1, padding: 12, alignItems: "center", marginBottom: 10 },
