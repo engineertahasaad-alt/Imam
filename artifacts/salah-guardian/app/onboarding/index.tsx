@@ -68,10 +68,10 @@ export default function WelcomeScreen() {
             style={styles.icon}
           />
           <Text style={[styles.appName, { color: colors.primary }]}>
-            Salah Guardian
+            Imam
           </Text>
           <Text style={[styles.tagline, { color: colors.mutedForeground }]}>
-            Never miss a prayer again
+            Your silent prayer guide
           </Text>
         </View>
 

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Salah Guardian",
-    "slug": "salah-guardian",
+    "name": "Imam",
+    "slug": "imam",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "salah-guardian",
+    "scheme": "imam",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.salahguardian.app",
+      "bundleIdentifier": "com.imam.app",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Used to calculate accurate prayer times for your location.",
         "NSLocationAlwaysUsageDescription": "Used to calculate accurate prayer times for your location.",
@@ -23,7 +23,7 @@
       }
     },
     "android": {
-      "package": "com.salahguardian.app",
+      "package": "com.imam.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -56,8 +56,8 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Salah Guardian needs location to calculate prayer times for your area.",
-          "locationWhenInUsePermission": "Salah Guardian needs location to calculate prayer times for your area."
+          "locationAlwaysAndWhenInUsePermission": "Imam needs your location to calculate accurate prayer times.",
+          "locationWhenInUsePermission": "Imam needs your location to calculate accurate prayer times."
         }
       ]
     ],

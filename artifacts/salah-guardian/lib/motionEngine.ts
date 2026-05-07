@@ -10,9 +10,9 @@ export type BodyPosition =
 
 export interface CalibrationProfile {
   standing: [number, number, number];
-  ruku: [number, number, number];
-  sujood: [number, number, number];
-  sitting: [number, number, number];
+  ruku:     [number, number, number];
+  sujood:   [number, number, number];
+  sitting:  [number, number, number];
   calibratedAt: number;
   pocketSide: "left" | "right" | "unknown";
 }
@@ -25,16 +25,21 @@ export interface DetectionEvent {
     | "PRAYER_COMPLETE"
     | "ERROR"
     | "STABILITY_UPDATE";
-  position?: BodyPosition;
-  expectedPosition?: BodyPosition;
+  position?:             BodyPosition;
+  expectedPosition?:     BodyPosition;
   nextExpectedPosition?: BodyPosition;
-  isCorrect?: boolean;
-  rakaatCount?: number;
-  confidence?: number;
-  stability?: number;
-  fsmState?: string;
-  timestamp: number;
-  message?: string;
+  /** true = correct posture or correct transition, false = wrong */
+  isCorrect?:     boolean;
+  /** true = held the correct position for the required 3 seconds → FSM advances */
+  isConfirmed?:   boolean;
+  /** 0–1, progress through the 3-second confirmation hold */
+  holdProgress?:  number;
+  rakaatCount?:   number;
+  confidence?:    number;
+  stability?:     number;
+  fsmState?:      string;
+  timestamp:      number;
+  message?:       string;
 }
 
 type FSMState =
@@ -47,19 +52,25 @@ type FSMState =
   | "SUJOOD_2"
   | "TASHAHUD";
 
-// ─── Fixed sensor constants ──────────────────────────────────────────────────
-const SENSOR_INTERVAL_MS    = 80;
-const ACCEL_ALPHA           = 0.18;
-const GYRO_ALPHA            = 0.25;
-const WINDOW_SIZE           = 10;
-const GYRO_STABLE_THRESHOLD = 0.30;
-const MAG_MIN               = 0.80;
-const MAG_MAX               = 1.25;
-const COSINE_BASE_THRESHOLD = 0.72;
-const COSINE_HARD_THRESHOLD = 0.88;
-const STABILITY_EMIT_MS     = 400;
-const FSM_STUCK_TIMEOUT_MS  = 45_000;
-const WRONG_REPEAT_MS       = 5_000;   // re-warn if stuck in wrong pos this long
+// ─── Sensor / window constants ────────────────────────────────────────────────
+const SENSOR_INTERVAL_MS     = 80;
+const ACCEL_ALPHA            = 0.18;
+const GYRO_ALPHA             = 0.25;
+const WINDOW_SIZE            = 10;
+const GYRO_STABLE_THRESHOLD  = 0.30;
+const MAG_MIN                = 0.80;
+const MAG_MAX                = 1.25;
+const COSINE_BASE_THRESHOLD  = 0.72;
+const COSINE_HARD_THRESHOLD  = 0.88;
+const STABILITY_EMIT_MS      = 400;
+const FSM_STUCK_TIMEOUT_MS   = 45_000;
+
+/** Correct posture must be held this long before it counts */
+const CORRECT_HOLD_MS        = 3_000;
+/** Wrong vibration re-fires at this interval (continuous) */
+const WRONG_REPEAT_MS        = 2_000;
+/** How often holdProgress is updated during the hold countdown */
+const HOLD_PROGRESS_TICK_MS  = 100;
 // ─────────────────────────────────────────────────────────────────────────────
 
 function clamp(v: number, lo: number, hi: number) {
@@ -68,10 +79,7 @@ function clamp(v: number, lo: number, hi: number) {
 function mag3(x: number, y: number, z: number) {
   return Math.sqrt(x * x + y * y + z * z);
 }
-function cosine(
-  a: [number, number, number],
-  b: [number, number, number]
-): number {
+function cosine(a: [number, number, number], b: [number, number, number]): number {
   const dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
   const ma  = mag3(a[0], a[1], a[2]);
   const mb  = mag3(b[0], b[1], b[2]);
@@ -84,22 +92,21 @@ export class MotionEngine {
   private accelSub: ReturnType<typeof Accelerometer.addListener> | null = null;
   private gyroSub:  ReturnType<typeof Gyroscope.addListener>    | null = null;
 
-  // ── Smoothed gravity (low-pass) ──────────────────────────────────────────
+  // ── Smoothed gravity ─────────────────────────────────────────────────────
   private gx = 0; private gy = 0; private gz = 0;
 
-  // ── Smoothed gyroscope (angular velocity rad/s) ──────────────────────────
+  // ── Smoothed gyroscope ───────────────────────────────────────────────────
   private wx = 0; private wy = 0; private wz = 0;
 
-  // ── Derived stability 0–1 ───────────────────────────────────────────────
+  // ── Stability 0–1 ────────────────────────────────────────────────────────
   private stability = 1;
 
-  // ── Sliding window of position votes ────────────────────────────────────
+  // ── Sliding window ───────────────────────────────────────────────────────
   private window:     BodyPosition[] = [];
   private windowConf: number[]       = [];
 
-  // ── Confirmed + candidate positions ─────────────────────────────────────
-  private currentPosition:        BodyPosition = "UNKNOWN";
-  private lastValidationPosition: BodyPosition = "UNKNOWN";
+  // ── Confirmed position ───────────────────────────────────────────────────
+  private currentPosition:     BodyPosition = "UNKNOWN";
 
   // ── FSM ──────────────────────────────────────────────────────────────────
   private fsmState:         FSMState = "IDLE";
@@ -107,26 +114,32 @@ export class MotionEngine {
   private startTime         = 0;
   private fsmStateEnteredAt = 0;
 
-  // ── Timers ───────────────────────────────────────────────────────────────
-  private stuckGuardTimer:    ReturnType<typeof setInterval>  | null = null;
-  private wrongPositionTimer: ReturnType<typeof setTimeout>   | null = null;
+  // ── Timers ────────────────────────────────────────────────────────────────
+  private stuckGuardTimer:       ReturnType<typeof setInterval>  | null = null;
+  private wrongRepeatTimer:      ReturnType<typeof setTimeout>   | null = null;
+  private correctHoldTimer:      ReturnType<typeof setTimeout>   | null = null;
+  private correctHoldTickTimer:  ReturnType<typeof setInterval>  | null = null;
+  private correctHoldStartAt     = 0;
 
-  // ── Calibration & adaptive threshold ────────────────────────────────────
-  private calibration:      CalibrationProfile | null = null;
-  private adaptedThreshold  = COSINE_BASE_THRESHOLD;
+  // ── Pending correct transition ────────────────────────────────────────────
+  /** Position being "held" for confirmation; null if no hold in progress */
+  private pendingCorrectPos:  BodyPosition | null = null;
 
-  // ── Sensitivity-derived tunables ─────────────────────────────────────────
-  /** Votes required out of WINDOW_SIZE (sensitivity 1→9, 5→5) */
-  private minVotes:          number;
-  /** Min ms a position must be held before it can change */
-  private minPositionHoldMs: number;
-  /** Last time position was confirmed */
+  // ── Calibration ──────────────────────────────────────────────────────────
+  private calibration:       CalibrationProfile | null = null;
+  private adaptedThreshold   = COSINE_BASE_THRESHOLD;
+
+  // ── Sensitivity tunables ─────────────────────────────────────────────────
+  /** Votes out of WINDOW_SIZE needed to confirm a position (1→9, 5→5) */
+  private minVotes:           number;
+  /** Min ms between position changes (hysteresis) */
+  private minPositionHoldMs:  number;
   private positionConfirmedAt = 0;
 
-  // ── Calibration recording ────────────────────────────────────────────────
-  private isRecording         = false;
-  private recordedSamples:    Array<[number, number, number]> = [];
-  private recordingTimer:     ReturnType<typeof setTimeout>   | null = null;
+  // ── Calibration recording ─────────────────────────────────────────────────
+  private isRecording          = false;
+  private recordedSamples:     Array<[number, number, number]> = [];
+  private recordingTimer:      ReturnType<typeof setTimeout>   | null = null;
   private onRecordingComplete: ((avg: [number, number, number]) => void) | null = null;
 
   // ── Throttle ────────────────────────────────────────────────────────────
@@ -136,8 +149,8 @@ export class MotionEngine {
   private onEvent: ((event: DetectionEvent) => void) | null = null;
 
   /**
-   * @param onEvent   event callback
-   * @param sensitivity  1 (most stable) → 5 (most responsive), default 3
+   * @param onEvent     event callback
+   * @param sensitivity 1 (most stable) → 5 (most responsive), default 3
    */
   constructor(
     onEvent: (event: DetectionEvent) => void,
@@ -145,16 +158,14 @@ export class MotionEngine {
   ) {
     this.onEvent = onEvent;
     const s = clamp(Math.round(sensitivity), 1, 5);
-    // More sensitivity → fewer votes needed → faster response
-    this.minVotes          = 10 - s;                      // 1→9, 3→7, 5→5
-    // More sensitivity → shorter hold time → faster transitions
-    this.minPositionHoldMs = 2400 - s * 400;              // 1→2000ms, 3→1000ms, 5→400ms
+    this.minVotes         = 10 - s;          // 1→9, 3→7, 5→5
+    this.minPositionHoldMs = 2400 - s * 400; // 1→2000ms, 3→1000ms, 5→400ms
   }
 
-  // ── Calibration ──────────────────────────────────────────────────────────
+  // ── Calibration ───────────────────────────────────────────────────────────
 
   setCalibration(profile: CalibrationProfile) {
-    this.calibration     = profile;
+    this.calibration      = profile;
     this.adaptedThreshold = this.computeAdaptiveThreshold(profile);
   }
 
@@ -185,7 +196,7 @@ export class MotionEngine {
     this.fsmStateEnteredAt  = Date.now();
     this.positionConfirmedAt = 0;
     this.currentPosition    = "UNKNOWN";
-    this.lastValidationPosition = "UNKNOWN";
+    this.pendingCorrectPos  = null;
     this.window             = [];
     this.windowConf         = [];
     this.startSensors();
@@ -195,9 +206,7 @@ export class MotionEngine {
   stop() {
     this.stopSensors();
     this.fsmState = "IDLE";
-    if (this.recordingTimer)     { clearTimeout(this.recordingTimer);    this.recordingTimer    = null; }
-    if (this.stuckGuardTimer)    { clearInterval(this.stuckGuardTimer);  this.stuckGuardTimer   = null; }
-    if (this.wrongPositionTimer) { clearTimeout(this.wrongPositionTimer); this.wrongPositionTimer = null; }
+    this.clearAllTimers();
   }
 
   private startSensors() {
@@ -215,15 +224,31 @@ export class MotionEngine {
       this.wx = GYRO_ALPHA * x + (1 - GYRO_ALPHA) * this.wx;
       this.wy = GYRO_ALPHA * y + (1 - GYRO_ALPHA) * this.wy;
       this.wz = GYRO_ALPHA * z + (1 - GYRO_ALPHA) * this.wz;
-      const gyroMag    = mag3(this.wx, this.wy, this.wz);
-      const rawStab    = clamp(1 - gyroMag / GYRO_STABLE_THRESHOLD, 0, 1);
-      this.stability   = 0.7 * this.stability + 0.3 * rawStab;
+      const gyroMag = mag3(this.wx, this.wy, this.wz);
+      this.stability = 0.7 * this.stability + 0.3 * clamp(1 - gyroMag / GYRO_STABLE_THRESHOLD, 0, 1);
     });
   }
 
   private stopSensors() {
     this.accelSub?.remove(); this.accelSub = null;
     this.gyroSub?.remove();  this.gyroSub  = null;
+  }
+
+  private clearAllTimers() {
+    if (this.stuckGuardTimer)      { clearInterval(this.stuckGuardTimer);      this.stuckGuardTimer      = null; }
+    if (this.recordingTimer)       { clearTimeout(this.recordingTimer);         this.recordingTimer       = null; }
+    this.clearWrongTimer();
+    this.clearCorrectHold();
+  }
+
+  private clearWrongTimer() {
+    if (this.wrongRepeatTimer) { clearTimeout(this.wrongRepeatTimer); this.wrongRepeatTimer = null; }
+  }
+
+  private clearCorrectHold() {
+    if (this.correctHoldTimer)     { clearTimeout(this.correctHoldTimer);      this.correctHoldTimer     = null; }
+    if (this.correctHoldTickTimer) { clearInterval(this.correctHoldTickTimer); this.correctHoldTickTimer = null; }
+    this.pendingCorrectPos = null;
   }
 
   private startStuckGuard() {
@@ -234,10 +259,11 @@ export class MotionEngine {
         this.fsmState !== "TASHAHUD" &&
         Date.now() - this.fsmStateEnteredAt > FSM_STUCK_TIMEOUT_MS
       ) {
-        this.fsmState           = "STANDING";
-        this.fsmStateEnteredAt  = Date.now();
-        this.currentPosition    = "UNKNOWN";
-        this.window             = [];
+        this.fsmState          = "STANDING";
+        this.fsmStateEnteredAt = Date.now();
+        this.currentPosition   = "UNKNOWN";
+        this.window            = [];
+        this.clearCorrectHold();
       }
     }, 5_000);
   }
@@ -245,8 +271,8 @@ export class MotionEngine {
   // ── Calibration recording ─────────────────────────────────────────────────
 
   startRecording(durationMs: number, onComplete: (avg: [number, number, number]) => void) {
-    this.isRecording        = true;
-    this.recordedSamples    = [];
+    this.isRecording         = true;
+    this.recordedSamples     = [];
     this.onRecordingComplete = onComplete;
 
     if (!this.accelSub) {
@@ -284,7 +310,7 @@ export class MotionEngine {
     return [sum[0] / trimmed.length, sum[1] / trimmed.length, sum[2] / trimmed.length];
   }
 
-  // ── Position classification ────────────────────────────────────────────────
+  // ── Position classification ───────────────────────────────────────────────
 
   private classifyPosition(): { position: BodyPosition; confidence: number } {
     const g: [number, number, number] = [this.gx, this.gy, this.gz];
@@ -296,8 +322,7 @@ export class MotionEngine {
   }
 
   private classifyWithCalibration(
-    g: [number, number, number],
-    magHealth: number
+    g: [number, number, number], magHealth: number
   ): { position: BodyPosition; confidence: number } {
     const cal = this.calibration!;
     const scores: Record<string, number> = {
@@ -318,9 +343,7 @@ export class MotionEngine {
   }
 
   private classifyFromAngles(
-    g: [number, number, number],
-    m: number,
-    magHealth: number
+    g: [number, number, number], m: number, magHealth: number
   ): { position: BodyPosition; confidence: number } {
     if (m < 0.3) return { position: "UNKNOWN", confidence: 0 };
     const [gx, gy, gz] = g;
@@ -340,7 +363,6 @@ export class MotionEngine {
     } else {
       position = "SUJOOD"; rawConf = (Math.abs(gz) + Math.abs(gx)) / m;
     }
-
     if (pitchDeg > 68 && gz < -0.5) { position = "SUJOOD"; rawConf = Math.abs(gz) / m; }
 
     return {
@@ -349,12 +371,9 @@ export class MotionEngine {
     };
   }
 
-  // ── Expected position from FSM ────────────────────────────────────────────
+  // ── Expected-position helpers (FSM-based) ────────────────────────────────
 
-  /**
-   * Returns the body position the user should currently be holding,
-   * based on the FSM state. Used for validation ("are you in the right posture?").
-   */
+  /** Body position the user should CURRENTLY be in, based on FSM state. */
   getExpectedPosition(): BodyPosition {
     switch (this.fsmState) {
       case "STANDING":        return "STANDING";
@@ -368,10 +387,7 @@ export class MotionEngine {
     }
   }
 
-  /**
-   * Returns the body position that should come NEXT in the prayer sequence.
-   * Used to guide the user ("move to X next").
-   */
+  /** Body position that would ADVANCE the FSM (what comes next). */
   getNextExpectedPosition(): BodyPosition {
     switch (this.fsmState) {
       case "STANDING":        return "RUKU";
@@ -385,7 +401,24 @@ export class MotionEngine {
     }
   }
 
-  // ── Sliding-window majority voting ────────────────────────────────────────
+  /**
+   * Returns true if detecting `pos` right now would trigger a valid FSM
+   * transition. This is what requires the 3-second confirmation hold.
+   */
+  private wouldAdvanceFSM(pos: BodyPosition): boolean {
+    switch (this.fsmState) {
+      case "STANDING":        return pos === "RUKU";
+      case "RUKU":            return pos === "STANDING";
+      case "STANDING_RETURN": return pos === "SUJOOD";
+      case "SUJOOD_1":        return pos === "SITTING" || pos === "STANDING";
+      case "BETWEEN_SAJDAHS": return pos === "SUJOOD";
+      case "SUJOOD_2":        return pos === "STANDING" || pos === "SITTING";
+      case "TASHAHUD":        return pos === "STANDING";
+      default:                return false;
+    }
+  }
+
+  // ── Sliding-window majority vote ──────────────────────────────────────────
 
   private processSample() {
     if (this.fsmState === "IDLE") return;
@@ -417,99 +450,191 @@ export class MotionEngine {
       .filter((_, i) => this.window[i] === winnerPos)
       .reduce((s, c) => s + c, 0) / Math.max(winnerVotes, 1);
 
-    // ── Throttled stability update for UI ──────────────────────────────────
+    // Throttled stability update
     const now = Date.now();
     if (now - this.lastStabilityEmit > STABILITY_EMIT_MS) {
       this.lastStabilityEmit = now;
       this.onEvent?.({
-        type: "STABILITY_UPDATE",
-        stability: this.stability,
-        confidence: avgConf,
-        position: winnerPos,
-        expectedPosition: this.getExpectedPosition(),
-        nextExpectedPosition: this.getNextExpectedPosition(),
-        fsmState: this.fsmState,
-        timestamp: now,
+        type:                  "STABILITY_UPDATE",
+        stability:             this.stability,
+        confidence:            avgConf,
+        position:              winnerPos,
+        expectedPosition:      this.getExpectedPosition(),
+        nextExpectedPosition:  this.getNextExpectedPosition(),
+        holdProgress:          this.pendingCorrectPos !== null
+                                 ? clamp((now - this.correctHoldStartAt) / CORRECT_HOLD_MS, 0, 1)
+                                 : 0,
+        fsmState:              this.fsmState,
+        timestamp:             now,
       });
     }
 
     if (!hasMajority || winnerPos === "UNKNOWN") return;
 
-    // ── Hysteresis: don't allow position change faster than minPositionHoldMs
+    // Hysteresis
     const sinceLastChange = now - this.positionConfirmedAt;
     if (winnerPos !== this.currentPosition && sinceLastChange < this.minPositionHoldMs) return;
 
-    if (winnerPos !== this.currentPosition) {
-      this.currentPosition     = winnerPos;
-      this.positionConfirmedAt = now;
+    if (winnerPos === this.currentPosition) {
+      // Position unchanged — if we had a wrong timer and position now matches expected, cancel wrong
+      if (this.wrongRepeatTimer && (winnerPos === this.getExpectedPosition() || this.wouldAdvanceFSM(winnerPos))) {
+        this.clearWrongTimer();
+      }
+      return;
+    }
 
-      // ── Posture validation ──────────────────────────────────────────────
-      const expected  = this.getExpectedPosition();
-      const nextExp   = this.getNextExpectedPosition();
-      const isCorrect = winnerPos === expected || winnerPos === nextExp;
+    // ── New position detected ─────────────────────────────────────────────
+    this.currentPosition     = winnerPos;
+    this.positionConfirmedAt = now;
 
-      this.emitPostureValidation(winnerPos, expected, nextExp, isCorrect, avgConf, now);
-      this.updateFSM(winnerPos, avgConf);
+    // Cancel any in-progress correct hold if the new position is different
+    if (this.pendingCorrectPos !== null && winnerPos !== this.pendingCorrectPos) {
+      this.clearCorrectHold();
+    }
+
+    // Cancel wrong timer (will restart below if still wrong)
+    this.clearWrongTimer();
+
+    const expected = this.getExpectedPosition();
+    const nextExp  = this.getNextExpectedPosition();
+
+    if (this.wouldAdvanceFSM(winnerPos)) {
+      // ── Correct transition position → start 3-second confirmation hold ──
+      this.startCorrectHold(winnerPos, expected, nextExp, avgConf, now);
+    } else if (winnerPos === expected) {
+      // ── In the correct static position (e.g., standing while in STANDING state) ──
+      this.onEvent?.({
+        type:                  "POSTURE_VALIDATION",
+        position:              winnerPos,
+        expectedPosition:      expected,
+        nextExpectedPosition:  nextExp,
+        isCorrect:             true,
+        isConfirmed:           false,
+        holdProgress:          0,
+        confidence:            avgConf,
+        fsmState:              this.fsmState,
+        timestamp:             now,
+      });
+    } else {
+      // ── Wrong position → vibrate continuously ───────────────────────────
+      this.fireWrong(winnerPos, expected, nextExp, avgConf, now);
+      this.scheduleWrongRepeat(winnerPos, expected, nextExp, avgConf);
     }
   }
 
-  private emitPostureValidation(
-    position: BodyPosition,
+  // ── Correct-hold 3-second countdown ──────────────────────────────────────
+
+  private startCorrectHold(
+    pos: BodyPosition,
     expected: BodyPosition,
-    nextExpected: BodyPosition,
-    isCorrect: boolean,
+    nextExp: BodyPosition,
+    confidence: number,
+    startTime: number
+  ) {
+    this.pendingCorrectPos = pos;
+    this.correctHoldStartAt = startTime;
+
+    // Emit immediate feedback (progress = 0)
+    this.onEvent?.({
+      type:                  "POSTURE_VALIDATION",
+      position:              pos,
+      expectedPosition:      expected,
+      nextExpectedPosition:  nextExp,
+      isCorrect:             true,
+      isConfirmed:           false,
+      holdProgress:          0,
+      confidence,
+      fsmState:              this.fsmState,
+      timestamp:             startTime,
+    });
+
+    // Tick progress updates
+    this.correctHoldTickTimer = setInterval(() => {
+      if (this.pendingCorrectPos !== pos) return;
+      const elapsed  = Date.now() - this.correctHoldStartAt;
+      const progress = clamp(elapsed / CORRECT_HOLD_MS, 0, 1);
+      this.onEvent?.({
+        type:                  "POSTURE_VALIDATION",
+        position:              pos,
+        expectedPosition:      expected,
+        nextExpectedPosition:  nextExp,
+        isCorrect:             true,
+        isConfirmed:           false,
+        holdProgress:          progress,
+        confidence,
+        fsmState:              this.fsmState,
+        timestamp:             Date.now(),
+      });
+    }, HOLD_PROGRESS_TICK_MS);
+
+    // Fire CONFIRMED after 3 seconds → advance FSM
+    this.correctHoldTimer = setTimeout(() => {
+      this.clearCorrectHold();
+
+      const now = Date.now();
+      this.onEvent?.({
+        type:                  "POSTURE_VALIDATION",
+        position:              pos,
+        expectedPosition:      expected,
+        nextExpectedPosition:  nextExp,
+        isCorrect:             true,
+        isConfirmed:           true,
+        holdProgress:          1,
+        confidence,
+        fsmState:              this.fsmState,
+        timestamp:             now,
+      });
+
+      // Now advance the FSM
+      this.updateFSM(pos, confidence);
+    }, CORRECT_HOLD_MS);
+  }
+
+  // ── Wrong-posture continuous vibration ────────────────────────────────────
+
+  private fireWrong(
+    pos: BodyPosition,
+    expected: BodyPosition,
+    nextExp: BodyPosition,
     confidence: number,
     now: number
   ) {
-    this.lastValidationPosition = position;
-
-    // Clear any existing wrong-position repeat timer
-    if (this.wrongPositionTimer) { clearTimeout(this.wrongPositionTimer); this.wrongPositionTimer = null; }
-
     this.onEvent?.({
-      type: "POSTURE_VALIDATION",
-      position,
-      expectedPosition: expected,
-      nextExpectedPosition: nextExpected,
-      isCorrect,
+      type:                  "POSTURE_VALIDATION",
+      position:              pos,
+      expectedPosition:      expected,
+      nextExpectedPosition:  nextExp,
+      isCorrect:             false,
+      isConfirmed:           false,
+      holdProgress:          0,
       confidence,
-      fsmState: this.fsmState,
-      timestamp: now,
+      fsmState:              this.fsmState,
+      timestamp:             now,
     });
-
-    // If wrong, schedule a repeat warning
-    if (!isCorrect) {
-      this.scheduleWrongRepeat(position, expected, nextExpected, confidence);
-    }
   }
 
   private scheduleWrongRepeat(
-    position: BodyPosition,
+    pos: BodyPosition,
     expected: BodyPosition,
-    nextExpected: BodyPosition,
+    nextExp: BodyPosition,
     confidence: number
   ) {
-    this.wrongPositionTimer = setTimeout(() => {
-      this.wrongPositionTimer = null;
-      // Only re-warn if still in the same wrong position
-      if (this.currentPosition === position && this.fsmState !== "IDLE") {
-        this.onEvent?.({
-          type: "POSTURE_VALIDATION",
-          position,
-          expectedPosition: expected,
-          nextExpectedPosition: nextExpected,
-          isCorrect: false,
-          confidence,
-          fsmState: this.fsmState,
-          timestamp: Date.now(),
-          message: "still in wrong posture",
-        });
-        this.scheduleWrongRepeat(position, expected, nextExpected, confidence);
+    this.wrongRepeatTimer = setTimeout(() => {
+      this.wrongRepeatTimer = null;
+
+      // Only repeat if user is STILL in the wrong position and no correct hold started
+      if (
+        this.currentPosition === pos &&
+        this.fsmState !== "IDLE" &&
+        this.pendingCorrectPos === null
+      ) {
+        this.fireWrong(pos, expected, nextExp, confidence, Date.now());
+        this.scheduleWrongRepeat(pos, expected, nextExp, confidence);
       }
     }, WRONG_REPEAT_MS);
   }
 
-  // ── Finite state machine ──────────────────────────────────────────────────
+  // ── Finite State Machine ──────────────────────────────────────────────────
 
   private transitionFSM(newState: FSMState) {
     this.fsmState          = newState;
@@ -532,7 +657,6 @@ export class MotionEngine {
           this.transitionFSM("STANDING_RETURN");
           this.onEvent?.({ type: "POSITION_CHANGE", position: "STANDING", confidence, fsmState: "STANDING_RETURN", timestamp: now });
         } else if (position === "SUJOOD") {
-          // Fast prayer — skip i'tidal
           this.transitionFSM("SUJOOD_1");
           this.onEvent?.({ type: "POSITION_CHANGE", position: "SUJOOD", confidence, fsmState: "SUJOOD_1", timestamp: now });
         }
@@ -565,11 +689,11 @@ export class MotionEngine {
         if (position === "STANDING" || position === "SITTING") {
           this.rakaatCount++;
           this.onEvent?.({
-            type: "RAKAH_COMPLETE",
+            type:        "RAKAH_COMPLETE",
             rakaatCount: this.rakaatCount,
             confidence,
-            fsmState: position === "SITTING" ? "TASHAHUD" : "STANDING",
-            timestamp: now,
+            fsmState:    position === "SITTING" ? "TASHAHUD" : "STANDING",
+            timestamp:   now,
           });
           this.transitionFSM(position === "SITTING" ? "TASHAHUD" : "STANDING");
         }
@@ -593,10 +717,10 @@ export class MotionEngine {
     return duration;
   }
 
-  getRakaatCount()       { return this.rakaatCount; }
-  getFSMState()          { return this.fsmState; }
-  getCurrentPosition()   { return this.currentPosition; }
-  getStability()         { return this.stability; }
+  getRakaatCount()     { return this.rakaatCount; }
+  getFSMState()        { return this.fsmState; }
+  getCurrentPosition() { return this.currentPosition; }
+  getStability()       { return this.stability; }
 
   getPositionLabel(position: BodyPosition): string {
     switch (position) {

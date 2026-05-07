@@ -59,13 +59,8 @@ const POSITION_GUIDE: Record<BodyPosition, string> = {
 };
 
 const FSM_STEPS = [
-  "STANDING",
-  "RUKU",
-  "STANDING_RETURN",
-  "SUJOOD_1",
-  "BETWEEN_SAJDAHS",
-  "SUJOOD_2",
-  "TASHAHUD",
+  "STANDING", "RUKU", "STANDING_RETURN",
+  "SUJOOD_1", "BETWEEN_SAJDAHS", "SUJOOD_2", "TASHAHUD",
 ] as const;
 
 const FSM_LABELS: Record<string, string> = {
@@ -92,34 +87,35 @@ export function DetectionModal({
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
-  const [position, setPosition]             = useState<BodyPosition>("UNKNOWN");
-  const [expectedPosition, setExpected]     = useState<BodyPosition>("STANDING");
-  const [nextExpected, setNextExpected]     = useState<BodyPosition>("RUKU");
-  const [isCorrect, setIsCorrect]           = useState<boolean | null>(null);
-  const [rakaatCount, setRakaatCount]       = useState(0);
-  const [confidence, setConfidence]         = useState(0);
-  const [stability, setStability]           = useState(1);
-  const [fsmState, setFsmState]             = useState("STANDING");
-  const [events, setEvents]                 = useState<string[]>([]);
-  const [startTime]                         = useState(Date.now());
+  const [position, setPosition]         = useState<BodyPosition>("UNKNOWN");
+  const [expectedPos, setExpected]       = useState<BodyPosition>("STANDING");
+  const [nextExpected, setNextExpected]  = useState<BodyPosition>("RUKU");
+  const [isCorrect, setIsCorrect]        = useState<boolean | null>(null);
+  const [holdProgress, setHoldProgress]  = useState(0);
+  const [isConfirmed, setIsConfirmed]    = useState(false);
+  const [rakaatCount, setRakaatCount]    = useState(0);
+  const [confidence, setConfidence]      = useState(0);
+  const [stability, setStability]        = useState(1);
+  const [fsmState, setFsmState]          = useState("STANDING");
+  const [events, setEvents]              = useState<string[]>([]);
+  const [startTime]                      = useState(Date.now());
 
   const engineRef  = useRef<MotionEngine | null>(null);
   const pulseAnim  = useRef(new Animated.Value(1)).current;
   const confAnim   = useRef(new Animated.Value(0)).current;
   const stabAnim   = useRef(new Animated.Value(1)).current;
-  const validAnim  = useRef(new Animated.Value(0)).current;
+  const holdAnim   = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) startDetection();
     return () => { engineRef.current?.stop(); };
   }, [visible]);
 
-  // Pulse animation
   useEffect(() => {
-    const speed = position !== "UNKNOWN" ? 600 : 1000;
+    const speed = position !== "UNKNOWN" ? 700 : 1100;
     const anim = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.08, duration: speed, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.07, duration: speed, useNativeDriver: true }),
         Animated.timing(pulseAnim, { toValue: 1,    duration: speed, useNativeDriver: true }),
       ])
     );
@@ -127,30 +123,25 @@ export function DetectionModal({
     return () => anim.stop();
   }, [position]);
 
-  // Confidence bar animation
   useEffect(() => {
     Animated.timing(confAnim, { toValue: confidence, duration: 300, useNativeDriver: false }).start();
   }, [confidence]);
 
-  // Stability bar animation
   useEffect(() => {
     Animated.timing(stabAnim, { toValue: stability, duration: 200, useNativeDriver: false }).start();
   }, [stability]);
 
-  // Validation flash
   useEffect(() => {
-    if (isCorrect === null) return;
-    Animated.sequence([
-      Animated.timing(validAnim, { toValue: 1, duration: 150, useNativeDriver: false }),
-      Animated.timing(validAnim, { toValue: 0, duration: 600, useNativeDriver: false }),
-    ]).start();
-  }, [isCorrect]);
+    Animated.timing(holdAnim, { toValue: holdProgress, duration: 120, useNativeDriver: false }).start();
+  }, [holdProgress]);
 
   function startDetection() {
     setPosition("UNKNOWN");
     setExpected("STANDING");
     setNextExpected("RUKU");
     setIsCorrect(null);
+    setHoldProgress(0);
+    setIsConfirmed(false);
     setRakaatCount(0);
     setConfidence(0);
     setStability(1);
@@ -158,41 +149,60 @@ export function DetectionModal({
     setEvents([]);
 
     const engine = new MotionEngine((event: DetectionEvent) => {
-      // ── Stability heartbeat ─────────────────────────────────────────────
+
+      // ── Stability heartbeat ──────────────────────────────────────────────
       if (event.type === "STABILITY_UPDATE") {
-        if (event.stability   !== undefined) setStability(event.stability);
-        if (event.confidence  !== undefined) setConfidence(event.confidence);
+        if (event.stability  !== undefined) setStability(event.stability);
+        if (event.confidence !== undefined) setConfidence(event.confidence);
         if (event.position && event.position !== "UNKNOWN") setPosition(event.position);
-        if (event.fsmState)        setFsmState(event.fsmState);
-        if (event.expectedPosition) setExpected(event.expectedPosition);
+        if (event.fsmState)          setFsmState(event.fsmState);
+        if (event.expectedPosition)  setExpected(event.expectedPosition);
         if (event.nextExpectedPosition) setNextExpected(event.nextExpectedPosition);
+        if (event.holdProgress !== undefined) setHoldProgress(event.holdProgress);
       }
 
-      // ── Posture validation ─────────────────────────────────────────────
+      // ── Posture validation ──────────────────────────────────────────────
       if (event.type === "POSTURE_VALIDATION") {
         if (event.position)            setPosition(event.position);
         if (event.expectedPosition)    setExpected(event.expectedPosition);
         if (event.nextExpectedPosition) setNextExpected(event.nextExpectedPosition);
         if (event.confidence !== undefined) setConfidence(event.confidence);
         if (event.fsmState)            setFsmState(event.fsmState);
-        if (event.isCorrect !== undefined) {
-          setIsCorrect(event.isCorrect);
-          if (event.isCorrect) {
-            vibrateCorrect(vibrationEnabled, vibrationStrength);
-          } else {
-            vibrateWrong(vibrationEnabled, vibrationStrength);
-          }
+        if (event.isCorrect !== undefined) setIsCorrect(event.isCorrect);
+        if (event.holdProgress !== undefined) setHoldProgress(event.holdProgress);
+
+        // ── WRONG posture (including repeats) ──────────────────────────
+        if (event.isCorrect === false) {
+          setHoldProgress(0);
+          setIsConfirmed(false);
+          vibrateWrong(vibrationEnabled, vibrationStrength);
+        }
+
+        // ── Holding in correct position — update progress bar ──────────
+        if (event.isCorrect === true && event.isConfirmed === false) {
+          // No vibration during hold — just show the progress bar
+        }
+
+        // ── CONFIRMED correct after 3-second hold ─────────────────────
+        if (event.isCorrect === true && event.isConfirmed === true) {
+          setHoldProgress(1);
+          setIsConfirmed(true);
+          vibrateCorrect(vibrationEnabled, vibrationStrength);
+          setTimeout(() => { setHoldProgress(0); setIsConfirmed(false); }, 800);
         }
       }
 
-      // ── FSM position change ─────────────────────────────────────────────
+      // ── FSM position change (after confirmed hold) ───────────────────
       if (event.type === "POSITION_CHANGE" && event.position) {
         setPosition(event.position);
         if (event.confidence !== undefined) setConfidence(event.confidence);
-        if (event.fsmState)  setFsmState(event.fsmState);
+        if (event.fsmState) setFsmState(event.fsmState);
+        setHoldProgress(0);
+        setIsConfirmed(false);
+        setIsCorrect(null);
       }
 
-      // ── Rak'ah complete ─────────────────────────────────────────────────
+      // ── Rak'ah complete ─────────────────────────────────────────────
       if (event.type === "RAKAH_COMPLETE") {
         const count = event.rakaatCount ?? 0;
         setRakaatCount(count);
@@ -200,6 +210,7 @@ export function DetectionModal({
         setEvents((prev) => [`Rak'ah ${count} complete`, ...prev.slice(0, 3)]);
         vibrateRakaatComplete(vibrationEnabled);
       }
+
     }, sensitivity);
 
     if (calibration) {
@@ -226,7 +237,7 @@ export function DetectionModal({
     onComplete(count, conf, durationMs);
   }
 
-  // ── Colors ────────────────────────────────────────────────────────────────
+  // ── Colors ─────────────────────────────────────────────────────────────────
   const positionColor =
     position === "SUJOOD"   ? colors.accent :
     position === "RUKU"     ? "#60a5fa" :
@@ -239,20 +250,19 @@ export function DetectionModal({
     stability > 0.4 ? colors.warning :
                       "#f87171";
 
-  const validationColor = isCorrect === true  ? colors.primary :
-                          isCorrect === false ? "#f87171" :
-                                               colors.mutedForeground;
-
-  const validationBg  = isCorrect === true  ? colors.primary + "20" :
-                        isCorrect === false ? "#f8717120" :
-                                             colors.secondary;
-
-  const validationBorder = isCorrect === true  ? colors.primary + "50" :
-                           isCorrect === false ? "#f8717150" :
+  const validationBg     = isCorrect === true  ? colors.primary + "20" :
+                           isCorrect === false ? "#f8717120" :
+                                                colors.secondary;
+  const validationBorder = isCorrect === true  ? colors.primary + "55" :
+                           isCorrect === false ? "#f8717155" :
                                                 colors.border;
+  const validationColor  = isCorrect === true  ? colors.primary :
+                           isCorrect === false ? "#f87171" :
+                                                colors.mutedForeground;
 
-  const confidencePct = Math.round(confidence * 100);
-  const stabilityPct  = Math.round(stability * 100);
+  const holdSecsRemaining = ((1 - holdProgress) * 3).toFixed(1);
+  const showHoldBar = isCorrect === true && !isConfirmed && holdProgress > 0;
+
   const fsmIdx = FSM_STEPS.indexOf(fsmState as (typeof FSM_STEPS)[number]);
 
   return (
@@ -271,7 +281,7 @@ export function DetectionModal({
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.foreground }]}>
-            {prayerName} — Live Detection
+            {prayerName || "Prayer"} — Live Detection
           </Text>
           <TouchableOpacity
             onPress={onCancel}
@@ -281,7 +291,7 @@ export function DetectionModal({
           </TouchableOpacity>
         </View>
 
-        {/* ── Current position circle ─────────────────────────────────────── */}
+        {/* ── Position circle ─────────────────────────────────────────────── */}
         <View style={styles.centerSection}>
           <Animated.View
             style={[
@@ -294,11 +304,7 @@ export function DetectionModal({
             ]}
           >
             <View style={[styles.positionInner, { backgroundColor: positionColor + "30" }]}>
-              <Feather
-                name={POSITION_ICONS[position] as any}
-                size={34}
-                color={positionColor}
-              />
+              <Feather name={POSITION_ICONS[position] as any} size={32} color={positionColor} />
             </View>
           </Animated.View>
 
@@ -314,16 +320,11 @@ export function DetectionModal({
         </View>
 
         {/* ── Posture validation card ─────────────────────────────────────── */}
-        <View
-          style={[
-            styles.validationCard,
-            { backgroundColor: validationBg, borderColor: validationBorder },
-          ]}
-        >
+        <View style={[styles.validationCard, { backgroundColor: validationBg, borderColor: validationBorder }]}>
           <View style={styles.validationRow}>
             <Feather
               name={
-                isCorrect === true  ? "check-circle" :
+                isCorrect === true  ? (isConfirmed ? "check-circle" : "clock") :
                 isCorrect === false ? "alert-triangle" :
                                       "target"
               }
@@ -331,11 +332,17 @@ export function DetectionModal({
               color={validationColor}
             />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.validationLabel, { color: colors.mutedForeground }]}>
-                {isCorrect === true ? "Correct posture" : isCorrect === false ? "Adjust posture" : "Expected posture"}
+              <Text style={[styles.validationTitle, { color: colors.mutedForeground }]}>
+                {isCorrect === true && !isConfirmed && showHoldBar
+                  ? `Hold still… ${holdSecsRemaining}s`
+                  : isConfirmed
+                  ? "Posture confirmed"
+                  : isCorrect === false
+                  ? "Adjust posture"
+                  : "Expected posture"}
               </Text>
               <Text style={[styles.validationPosition, { color: validationColor }]}>
-                {POSITION_LABELS[expectedPosition]}
+                {POSITION_LABELS[expectedPos]}
               </Text>
             </View>
             <View>
@@ -348,26 +355,42 @@ export function DetectionModal({
               </Text>
             </View>
           </View>
+
+          {/* 3-second hold progress bar */}
+          {showHoldBar && (
+            <View style={[styles.holdTrack, { backgroundColor: colors.primary + "25" }]}>
+              <Animated.View
+                style={[
+                  styles.holdFill,
+                  {
+                    backgroundColor: colors.primary,
+                    width: holdAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ["0%", "100%"],
+                    }),
+                  },
+                ]}
+              />
+            </View>
+          )}
+
           <Text style={[styles.validationGuide, { color: colors.mutedForeground }]}>
-            {POSITION_GUIDE[expectedPosition]}
+            {POSITION_GUIDE[expectedPos]}
           </Text>
         </View>
 
-        {/* ── Quality bars ────────────────────────────────────────────────── */}
+        {/* ── Quality bars ─────────────────────────────────────────────────── */}
         <View style={[styles.qualityCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.qualityRow}>
             <Text style={[styles.qualityLabel, { color: colors.mutedForeground }]}>Match confidence</Text>
-            <Text style={[styles.qualityPct, { color: colors.primary }]}>{confidencePct}%</Text>
+            <Text style={[styles.qualityPct, { color: colors.primary }]}>{Math.round(confidence * 100)}%</Text>
           </View>
           <View style={[styles.barTrack, { backgroundColor: colors.secondary }]}>
             <Animated.View
-              style={[
-                styles.barFill,
-                {
-                  backgroundColor: colors.primary,
-                  width: confAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
-                },
-              ]}
+              style={[styles.barFill, {
+                backgroundColor: colors.primary,
+                width: confAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
+              }]}
             />
           </View>
 
@@ -375,28 +398,25 @@ export function DetectionModal({
 
           <View style={styles.qualityRow}>
             <Text style={[styles.qualityLabel, { color: colors.mutedForeground }]}>Phone stability</Text>
-            <Text style={[styles.qualityPct, { color: stabilityColor }]}>{stabilityPct}%</Text>
+            <Text style={[styles.qualityPct, { color: stabilityColor }]}>{Math.round(stability * 100)}%</Text>
           </View>
           <View style={[styles.barTrack, { backgroundColor: colors.secondary }]}>
             <Animated.View
-              style={[
-                styles.barFill,
-                {
-                  backgroundColor: stabilityColor,
-                  width: stabAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
-                },
-              ]}
+              style={[styles.barFill, {
+                backgroundColor: stabilityColor,
+                width: stabAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
+              }]}
             />
           </View>
 
           {stability < 0.4 && (
             <Text style={[styles.stabilityHint, { color: colors.warning }]}>
-              Hold still — stabilizing detection…
+              Hold still — stabilizing…
             </Text>
           )}
         </View>
 
-        {/* ── FSM step indicator ──────────────────────────────────────────── */}
+        {/* ── FSM step dots ─────────────────────────────────────────────────── */}
         <View style={styles.fsmRow}>
           {FSM_STEPS.map((step, i) => {
             const isPast    = i < fsmIdx;
@@ -404,12 +424,7 @@ export function DetectionModal({
             return (
               <React.Fragment key={step}>
                 {i > 0 && (
-                  <View
-                    style={[
-                      styles.fsmLine,
-                      { backgroundColor: isPast ? colors.primary : colors.border },
-                    ]}
-                  />
+                  <View style={[styles.fsmLine, { backgroundColor: isPast ? colors.primary : colors.border }]} />
                 )}
                 <View style={styles.fsmStep}>
                   <View
@@ -443,35 +458,24 @@ export function DetectionModal({
               /{expectedRakaat}
             </Text>
           </Text>
-          <Text style={[styles.rakaatLabel, { color: colors.mutedForeground }]}>
-            Rak'aat completed
-          </Text>
+          <Text style={[styles.rakaatLabel, { color: colors.mutedForeground }]}>Rak'aat completed</Text>
           <View style={styles.progressDots}>
             {Array.from({ length: expectedRakaat }).map((_, i) => (
               <View
                 key={i}
-                style={[
-                  styles.dot,
-                  { backgroundColor: i < rakaatCount ? colors.primary : colors.border },
-                ]}
+                style={[styles.dot, { backgroundColor: i < rakaatCount ? colors.primary : colors.border }]}
               />
             ))}
           </View>
         </View>
 
-        {/* ── Event log ───────────────────────────────────────────────────── */}
+        {/* ── Event log ────────────────────────────────────────────────────── */}
         {events.length > 0 && (
           <View style={styles.eventLog}>
             {events.map((evt, i) => (
               <Text
                 key={i}
-                style={[
-                  styles.eventText,
-                  {
-                    color:   i === 0 ? colors.primary : colors.mutedForeground,
-                    opacity: 1 - i * 0.3,
-                  },
-                ]}
+                style={[styles.eventText, { color: i === 0 ? colors.primary : colors.mutedForeground, opacity: 1 - i * 0.3 }]}
               >
                 ✓ {evt}
               </Text>
@@ -479,7 +483,7 @@ export function DetectionModal({
           </View>
         )}
 
-        {/* ── Buttons ─────────────────────────────────────────────────────── */}
+        {/* ── Buttons ──────────────────────────────────────────────────────── */}
         <View style={styles.buttons}>
           <TouchableOpacity
             style={[styles.completeBtn, { backgroundColor: colors.primary }]}
@@ -499,7 +503,7 @@ export function DetectionModal({
         </View>
 
         <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-          Keep phone in pocket · Short vibration = correct · Long = adjust
+          Short vibration = confirmed · Long repeated = adjust posture
         </Text>
       </View>
     </Modal>
@@ -507,239 +511,66 @@ export function DetectionModal({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  container: { flex: 1, paddingHorizontal: 20 },
 
-  // Position circle
-  centerSection: {
-    alignItems: "center",
-    marginBottom: 14,
-  },
-  positionCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
-  },
-  positionInner: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  positionLabel: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  webNote: {
-    fontSize: 12,
-    marginTop: 6,
-    textAlign: "center",
-  },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
+  title:  { fontSize: 17, fontWeight: "700", flex: 1, marginRight: 12 },
+  iconBtn:{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+
+  centerSection: { alignItems: "center", marginBottom: 12 },
+  positionCircle:{ width: 112, height: 112, borderRadius: 56, borderWidth: 2, alignItems: "center", justifyContent: "center", marginBottom: 8 },
+  positionInner: { width: 70, height: 70, borderRadius: 35, alignItems: "center", justifyContent: "center" },
+  positionLabel: { fontSize: 14, fontWeight: "600" },
+  webNote:       { fontSize: 11, marginTop: 6, textAlign: "center" },
 
   // Validation card
-  validationCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 12,
-    marginBottom: 12,
-    gap: 6,
-  },
-  validationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  validationLabel: {
-    fontSize: 11,
-    fontWeight: "500",
-  },
-  validationPosition: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  validationGuide: {
-    fontSize: 11,
-    lineHeight: 16,
-    paddingLeft: 28,
-  },
-  nextLabel: {
-    fontSize: 10,
-    textAlign: "right",
-  },
-  nextPosition: {
-    fontSize: 12,
-    fontWeight: "600",
-    textAlign: "right",
-  },
+  validationCard: { borderRadius: 14, borderWidth: 1, padding: 12, marginBottom: 10, gap: 6 },
+  validationRow:  { flexDirection: "row", alignItems: "center", gap: 10 },
+  validationTitle:{ fontSize: 11, fontWeight: "600" },
+  validationPosition: { fontSize: 14, fontWeight: "700" },
+  validationGuide:{ fontSize: 11, lineHeight: 15, paddingLeft: 28 },
+  nextLabel:      { fontSize: 10, textAlign: "right" },
+  nextPosition:   { fontSize: 12, fontWeight: "600", textAlign: "right" },
+
+  // 3-second hold bar
+  holdTrack: { height: 6, borderRadius: 3, overflow: "hidden", marginTop: 2 },
+  holdFill:  { height: 6, borderRadius: 3 },
 
   // Quality bars
-  qualityCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 12,
-    marginBottom: 12,
-  },
-  qualityRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 5,
-  },
-  qualityLabel: {
-    fontSize: 11,
-    fontWeight: "500",
-  },
-  qualityPct: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  barTrack: {
-    height: 5,
-    borderRadius: 3,
-    overflow: "hidden",
-    marginBottom: 3,
-  },
-  barFill: {
-    height: 5,
-    borderRadius: 3,
-  },
-  divider: {
-    height: 1,
-    marginVertical: 8,
-  },
-  stabilityHint: {
-    fontSize: 10,
-    marginTop: 4,
-    textAlign: "center",
-  },
+  qualityCard:  { borderRadius: 14, borderWidth: 1, padding: 12, marginBottom: 10 },
+  qualityRow:   { flexDirection: "row", justifyContent: "space-between", marginBottom: 5 },
+  qualityLabel: { fontSize: 11, fontWeight: "500" },
+  qualityPct:   { fontSize: 11, fontWeight: "700" },
+  barTrack:     { height: 5, borderRadius: 3, overflow: "hidden", marginBottom: 2 },
+  barFill:      { height: 5, borderRadius: 3 },
+  divider:      { height: 1, marginVertical: 8 },
+  stabilityHint:{ fontSize: 10, marginTop: 4, textAlign: "center" },
 
-  // FSM steps
-  fsmRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-    paddingHorizontal: 4,
-  },
-  fsmStep: {
-    alignItems: "center",
-  },
-  fsmDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  fsmLine: {
-    flex: 1,
-    height: 2,
-    marginHorizontal: 2,
-  },
-  fsmStepLabel: {
-    fontSize: 9,
-    fontWeight: "600",
-    marginTop: 3,
-    position: "absolute",
-    top: 12,
-    width: 52,
-    textAlign: "center",
-  },
+  // FSM
+  fsmRow:      { flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 10 },
+  fsmStep:     { alignItems: "center" },
+  fsmDot:      { width: 10, height: 10, borderRadius: 5 },
+  fsmLine:     { flex: 1, height: 2, marginHorizontal: 2 },
+  fsmStepLabel:{ fontSize: 9, fontWeight: "600", marginTop: 3, position: "absolute", top: 12, width: 52, textAlign: "center" },
 
   // Rak'aat
-  rakaatCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  rakaatNumber: {
-    fontSize: 46,
-    fontWeight: "700",
-    lineHeight: 54,
-  },
-  rakaatTotal: {
-    fontSize: 24,
-  },
-  rakaatLabel: {
-    fontSize: 11,
-    marginBottom: 8,
-  },
-  progressDots: {
-    flexDirection: "row",
-    gap: 8,
-    flexWrap: "wrap",
-    justifyContent: "center",
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
+  rakaatCard:   { borderRadius: 14, borderWidth: 1, padding: 12, alignItems: "center", marginBottom: 10 },
+  rakaatNumber: { fontSize: 42, fontWeight: "700", lineHeight: 50 },
+  rakaatTotal:  { fontSize: 22 },
+  rakaatLabel:  { fontSize: 11, marginBottom: 7 },
+  progressDots: { flexDirection: "row", gap: 8, flexWrap: "wrap", justifyContent: "center" },
+  dot:          { width: 10, height: 10, borderRadius: 5 },
 
-  // Event log
-  eventLog: {
-    alignItems: "center",
-    marginBottom: 10,
-    gap: 2,
-  },
-  eventText: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
+  // Events
+  eventLog:  { alignItems: "center", marginBottom: 8, gap: 2 },
+  eventText: { fontSize: 12, fontWeight: "500" },
 
   // Buttons
-  buttons: {
-    gap: 8,
-  },
-  completeBtn: {
-    borderRadius: 14,
-    paddingVertical: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  completeBtnText: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  cancelButton: {
-    borderRadius: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    alignItems: "center",
-  },
-  cancelBtnText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  hint: {
-    textAlign: "center",
-    fontSize: 10,
-    marginTop: 10,
-    lineHeight: 16,
-  },
+  buttons:      { gap: 8 },
+  completeBtn:  { borderRadius: 14, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  completeBtnText: { fontSize: 16, fontWeight: "700" },
+  cancelButton: { borderRadius: 14, paddingVertical: 12, borderWidth: 1, alignItems: "center" },
+  cancelBtnText:{ fontSize: 14, fontWeight: "500" },
+
+  hint: { textAlign: "center", fontSize: 10, marginTop: 8, lineHeight: 15 },
 });
