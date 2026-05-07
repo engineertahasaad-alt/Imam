@@ -1,0 +1,317 @@
+IMPORTANT — STRICT NON-DESTRUCTIVE RULES
+
+READ CAREFULLY.
+
+You are NOT allowed to rebuild, redesign, restructure, refactor, replace, or downgrade the existing application.
+
+You must preserve ALL existing:
+- Features
+- Logic
+- Sensor systems
+- Prayer detection behavior
+- UI behavior
+- Navigation
+- Architecture
+- Existing calibration flow
+- Existing working functionality
+
+DO NOT:
+- Rewrite the app
+- Replace existing prayer detection
+- Change current app flow
+- Rename existing files/functions/components unnecessarily
+- Remove code
+- Simplify existing systems
+- Introduce breaking changes
+- Modify unrelated code
+
+This task is ADDITIVE ONLY.
+
+Your ONLY goal:
+Add a new optional feature called:
+
+“Voice-Guided Personalized Training System”
+
+Everything else must remain untouched.
+
+--------------------------------------------------
+FEATURE PURPOSE
+--------------------------------------------------
+
+The application already detects prayer movements using phone sensors.
+
+This new feature must improve detection accuracy over time by allowing each user to train the app using guided voice sessions.
+
+The system should adapt to:
+- User body movement style
+- Prayer speed
+- Device type
+- Pocket position
+- Clothing differences
+- Sensor variations
+- Individual movement patterns
+
+The training system must improve recognition confidence gradually without replacing the existing detection engine.
+
+--------------------------------------------------
+IMPORTANT ARCHITECTURE RULE
+--------------------------------------------------
+
+DO NOT replace the current motion detection engine.
+
+The new training system must act as:
+- Enhancement Layer
+- Personalization Layer
+- Confidence Improvement Layer
+
+Existing detection must continue working exactly as before.
+
+The training system only improves accuracy using user-specific calibration data.
+
+--------------------------------------------------
+TRAINING MODE
+--------------------------------------------------
+
+Add a new OPTIONAL screen/button only:
+
+“Training Mode”
+
+Minimal UI additions only.
+Do not redesign the application.
+
+--------------------------------------------------
+VOICE-GUIDED TRAINING FLOW
+--------------------------------------------------
+
+STEP 1:
+User taps:
+“Start Training”
+
+STEP 2:
+App explains:
+- Put phone in normal prayer position
+- Pray naturally
+- Follow audio instructions
+- Stay still briefly between movements
+
+STEP 3:
+Voice-guided sequence begins.
+
+Arabic prompts preferred.
+
+Example:
+- "استعد"
+- "قف ثابتًا"
+- "اركع الآن"
+- "قم"
+- "اسجد"
+- "اجلس"
+- "اسجد مرة أخرى"
+
+STEP 4:
+During every movement:
+Record:
+- Accelerometer
+- Gyroscope
+- Orientation
+- Rotation
+- Timestamps
+
+STEP 5:
+Automatically label movement segments.
+
+STEP 6:
+Save session locally.
+
+--------------------------------------------------
+CRITICAL DATA PROCESSING RULE
+--------------------------------------------------
+
+DO NOT rely only on raw sensor streams.
+
+The system MUST extract lightweight motion features from sensor data.
+
+Store BOTH:
+1. Raw sensor data
+2. Extracted movement features
+
+Required lightweight features:
+- Movement duration
+- Peak acceleration
+- Orientation delta
+- Rotation intensity
+- Stability windows
+- Transition timing
+- Motion variance
+- Pause duration
+- Position transition sequence
+
+--------------------------------------------------
+DETECTION STRATEGY
+--------------------------------------------------
+
+Priority:
+Lightweight + stable + battery efficient.
+
+DO NOT introduce heavy AI systems unnecessarily.
+
+Preferred approaches:
+- Adaptive thresholds
+- Statistical averaging
+- Pattern comparison
+- Confidence scoring
+- Feature similarity matching
+- Signal segmentation
+- Motion transition analysis
+
+TensorFlow Lite is OPTIONAL only if:
+- Lightweight
+- Fully offline
+- No performance degradation
+
+DO NOT add large ML models.
+
+--------------------------------------------------
+MULTI-SESSION LEARNING
+--------------------------------------------------
+
+The app must support:
+- Unlimited retraining
+- Multiple sessions
+- Incremental improvement
+- Personalized adaptation
+
+Add buttons:
+- Train Again
+- Add More Samples
+- Reset Training Data
+
+New sessions must improve recognition gradually.
+
+The system should learn from:
+- Fast prayer
+- Slow prayer
+- Different pockets
+- Different clothing
+- Different body movement styles
+
+--------------------------------------------------
+SESSION QUALITY ANALYSIS
+--------------------------------------------------
+
+Every training session should receive a quality score.
+
+Example:
+- Excellent
+- Good
+- Weak
+- Noisy
+
+Low-quality sessions should:
+- Have lower influence
+OR
+- Be ignored safely
+
+Detect noisy sessions using:
+- Excessive random movement
+- Missing stability periods
+- Inconsistent transitions
+- Sensor interruptions
+
+--------------------------------------------------
+OFFLINE REQUIREMENTS
+--------------------------------------------------
+
+Everything must work:
+- Fully offline
+- Without cloud services
+- Without external APIs
+- Without internet
+
+Voice prompts should preferably use offline TTS.
+
+--------------------------------------------------
+LOCAL STORAGE ONLY
+--------------------------------------------------
+
+Store training data locally only.
+
+Suggested lightweight storage:
+- SQLite
+OR
+- Realm
+OR
+- Local JSON database
+
+Do NOT introduce heavy backend infrastructure.
+
+Suggested structures:
+- training_sessions
+- movement_samples
+- extracted_features
+- calibration_profiles
+- session_quality
+
+--------------------------------------------------
+PERFORMANCE RULES
+--------------------------------------------------
+
+The feature must remain:
+- Lightweight
+- Battery efficient
+- Fast
+- Stable
+
+Training must NOT:
+- Freeze UI
+- Drain battery heavily
+- Block existing prayer detection
+- Slow app startup
+
+--------------------------------------------------
+BACKWARD COMPATIBILITY
+--------------------------------------------------
+
+MANDATORY:
+
+After implementation:
+- Existing prayer detection must still work exactly as before
+- Existing features must remain untouched
+- Existing calibration must remain functional
+- Existing UI must remain functional
+
+No regressions allowed.
+
+--------------------------------------------------
+TESTING REQUIREMENTS
+--------------------------------------------------
+
+Verify carefully:
+1. Existing prayer detection still works
+2. Existing app behavior is unchanged
+3. Training sessions save correctly
+4. Retraining improves confidence gradually
+5. Low-quality sessions are handled safely
+6. Offline mode works
+7. Battery usage remains acceptable
+8. No feature degradation occurred
+
+--------------------------------------------------
+FINAL CRITICAL RULE
+--------------------------------------------------
+
+DO NOT rebuild the app.
+
+DO NOT redesign the app.
+
+DO NOT replace existing systems.
+
+DO NOT remove features.
+
+ONLY ADD:
+- Voice-guided training
+- Multi-session personalization
+- Lightweight adaptive learning
+- Confidence improvement layer
+
+Everything else must remain exactly as it already works.

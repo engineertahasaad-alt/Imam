@@ -16,6 +16,7 @@ import { DetectionModal } from "@/components/DetectionModal";
 import { NextPrayerCard } from "@/components/NextPrayerCard";
 import { PrayerTimesList } from "@/components/PrayerTimesList";
 import { StreakCard } from "@/components/StreakCard";
+import { TrainingModal } from "@/components/TrainingModal";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -44,10 +45,12 @@ export default function HomeScreen() {
     markPrayerDetected,
     calibration,
     refreshPrayerTimes,
+    refreshCalibration,
   } = useApp();
 
   const [detectionVisible, setDetectionVisible] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [trainingVisible, setTrainingVisible]   = useState(false);
+  const [refreshing, setRefreshing]             = useState(false);
 
   const vibrationEnabled  = settings?.vibrationEnabled  ?? true;
   const vibrationStrength = settings?.vibrationStrength ?? "high";
@@ -140,7 +143,7 @@ export default function HomeScreen() {
         {/* Train Phone */}
         <TouchableOpacity
           style={[styles.trainCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={() => router.push("/onboarding/calibration")}
+          onPress={() => setTrainingVisible(true)}
           activeOpacity={0.8}
         >
           <View style={[styles.trainIcon, { backgroundColor: colors.gold + "22" }]}>
@@ -172,6 +175,13 @@ export default function HomeScreen() {
         sensitivity={sensitivity}
         onComplete={handleDetectionComplete}
         onCancel={() => setDetectionVisible(false)}
+      />
+
+      <TrainingModal
+        visible={trainingVisible}
+        pocketSide={calibration?.pocketSide ?? "unknown"}
+        onClose={() => setTrainingVisible(false)}
+        onCalibrationImproved={refreshCalibration}
       />
     </>
   );

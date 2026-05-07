@@ -59,6 +59,7 @@
     "expo-background-fetch": "^14.0.9",
     "expo-notifications": "^0.32.17",
     "expo-sensors": "^15.0.8",
+    "expo-speech": "^55.0.13",
     "expo-task-manager": "^14.0.9"
   }
 }

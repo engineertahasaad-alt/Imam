@@ -80,6 +80,7 @@ interface AppContextType {
 
   calibration: CalibrationData | null;
   saveCalibrationData: (data: CalibrationData) => Promise<void>;
+  refreshCalibration: () => Promise<void>;
 
   completeOnboarding: (lat: number, lng: number, city: string) => Promise<void>;
 }
@@ -319,6 +320,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCalibration(data);
   }
 
+  async function refreshCalibration() {
+    const cal = await getCalibration();
+    setCalibration(cal);
+  }
+
   async function completeOnboarding(lat: number, lng: number, city: string) {
     const updated: Partial<AppSettings> = {
       hasCompletedOnboarding: true,
@@ -366,6 +372,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         markPrayerManual,
         calibration,
         saveCalibrationData,
+        refreshCalibration,
         completeOnboarding,
       }}
     >
