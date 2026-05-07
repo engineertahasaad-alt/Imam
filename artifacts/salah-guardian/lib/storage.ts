@@ -19,6 +19,12 @@ export interface AppSettings {
   theme: "dark" | "light" | "system";
   madhab: "shafi" | "hanafi";
   vibrationEnabled: boolean;
+  /** 1 = very stable (fewer false positives), 5 = very responsive */
+  sensitivity: number;
+  /** Global prayer time adjustment in minutes (±30) */
+  prayerTimeOffsetMinutes: number;
+  /** Controls haptic pulse intensity/count */
+  vibrationStrength: "low" | "medium" | "high";
 }
 
 export interface PrayerRecord {
@@ -58,6 +64,9 @@ function defaultSettings(): AppSettings {
     theme: "system",
     madhab: "shafi",
     vibrationEnabled: true,
+    sensitivity: 3,
+    prayerTimeOffsetMinutes: 0,
+    vibrationStrength: "high",
   };
 }
 

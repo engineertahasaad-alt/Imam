@@ -12,22 +12,98 @@ function sleep(ms: number) {
 async function heavy() {
   await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 }
-
 async function medium() {
   await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 }
-
 async function rigid() {
   await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
 }
 
+// ── Two primary patterns ────────────────────────────────────────────────────
+
 /**
- * Distinct vibration for each prayer body position.
- *
- * RUKU    – single heavy thud (bow down)
- * SUJOOD  – heavy + short gap + medium (body settling into prostration)
- * STANDING – medium (standing back up, lighter movement)
- * SITTING  – rigid (firm but brief, seated pause)
+ * CORRECT posture confirmed — short sharp double-tap.
+ * Meaning: "You are in the right prayer position."
+ * Strength variants:
+ *   low    → single heavy
+ *   medium → heavy + 60ms + heavy
+ *   high   → heavy + 50ms + heavy + 50ms + medium  (triple rapid)
+ */
+export async function vibrateCorrect(
+  enabled: boolean,
+  strength: "low" | "medium" | "high" = "high"
+) {
+  if (!IS_NATIVE || !enabled) return;
+  try {
+    switch (strength) {
+      case "low":
+        await heavy();
+        break;
+      case "medium":
+        await heavy();
+        await sleep(60);
+        await heavy();
+        break;
+      case "high":
+        await heavy();
+        await sleep(50);
+        await heavy();
+        await sleep(50);
+        await medium();
+        break;
+    }
+  } catch { /* ignore */ }
+}
+
+/**
+ * WRONG posture detected — slower triple warning.
+ * Meaning: "Your posture does NOT match the expected prayer step."
+ * Clearly different feel from vibrateCorrect — longer, more insistent.
+ * Strength variants:
+ *   low    → heavy + 130ms + heavy
+ *   medium → heavy + 120ms + heavy + 120ms + heavy
+ *   high   → heavy + 110ms + heavy + 110ms + heavy + 110ms + heavy  (quad)
+ */
+export async function vibrateWrong(
+  enabled: boolean,
+  strength: "low" | "medium" | "high" = "high"
+) {
+  if (!IS_NATIVE || !enabled) return;
+  try {
+    switch (strength) {
+      case "low":
+        await heavy();
+        await sleep(130);
+        await heavy();
+        break;
+      case "medium":
+        await heavy();
+        await sleep(120);
+        await heavy();
+        await sleep(120);
+        await heavy();
+        break;
+      case "high":
+        await heavy();
+        await sleep(110);
+        await heavy();
+        await sleep(110);
+        await heavy();
+        await sleep(110);
+        await heavy();
+        break;
+    }
+  } catch { /* ignore */ }
+}
+
+// ── Position-specific patterns ──────────────────────────────────────────────
+
+/**
+ * Distinct haptic per prayer body position:
+ *   RUKU    – single heavy (bow down)
+ *   SUJOOD  – heavy + gap + medium (two-part, body settling)
+ *   STANDING– medium (standing back up)
+ *   SITTING – rigid (brief, firm pause)
  */
 export async function vibratePosition(
   position: BodyPosition,
@@ -56,10 +132,9 @@ export async function vibratePosition(
   } catch { /* ignore */ }
 }
 
-/**
- * Double heavy thud — one rak'ah counted.
- * Unmistakably different from a single position change.
- */
+// ── Event patterns ──────────────────────────────────────────────────────────
+
+/** Double heavy thud — one rak'ah counted. */
 export async function vibrateRakaatComplete(enabled: boolean) {
   if (!IS_NATIVE || !enabled) return;
   try {
@@ -69,9 +144,7 @@ export async function vibrateRakaatComplete(enabled: boolean) {
   } catch { /* ignore */ }
 }
 
-/**
- * Triple heavy thud — prayer marked complete.
- */
+/** Triple heavy thud — prayer marked complete. */
 export async function vibratePrayerComplete(enabled: boolean) {
   if (!IS_NATIVE || !enabled) return;
   try {
@@ -83,9 +156,7 @@ export async function vibratePrayerComplete(enabled: boolean) {
   } catch { /* ignore */ }
 }
 
-/**
- * Single heavy tap — for buttons that start/confirm important actions.
- */
+/** Single heavy — for start/confirm action buttons. */
 export async function vibrateAction(enabled: boolean) {
   if (!IS_NATIVE || !enabled) return;
   try {
@@ -93,9 +164,7 @@ export async function vibrateAction(enabled: boolean) {
   } catch { /* ignore */ }
 }
 
-/**
- * Success notification (calibration step complete, etc.)
- */
+/** Success notification (calibration step complete, etc.) */
 export async function vibrateSuccess(enabled: boolean) {
   if (!IS_NATIVE || !enabled) return;
   try {

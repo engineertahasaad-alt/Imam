@@ -103,6 +103,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     theme: "system",
     madhab: "shafi",
     vibrationEnabled: true,
+    sensitivity: 3,
+    prayerTimeOffsetMinutes: 0,
+    vibrationStrength: "high",
   });
   const [isLoading, setIsLoading] = useState(true);
   const [todayTimes, setTodayTimes] = useState<PrayerTimes | null>(null);

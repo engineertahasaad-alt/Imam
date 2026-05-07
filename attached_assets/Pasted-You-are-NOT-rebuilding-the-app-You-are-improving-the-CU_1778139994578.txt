@@ -1,0 +1,169 @@
+You are NOT rebuilding the app.
+
+You are improving the CURRENT existing implementation only.
+
+The current prototype already works and detects prayer positions.
+Your task is to ENHANCE stability, background behavior, vibration strength, prayer-flow logic, and prayer notifications WITHOUT changing the existing architecture unless necessary.
+
+This app is NOT a step counter. 
+
+The app acts as a REAL-TIME prayer posture guide and validator during Salah. (validates the right posture according to the current Salah)
+
+Flow:
+
+User opens app.
+User presses "Start Prayer".
+User puts phone in pocket.
+App continues working in background even when:
+screen is locked
+app minimized
+screen turned off
+
+The app continuously monitors body movement and orientation using:
+
+accelerometer
+gyroscope
+gravity sensor
+motion stability analysis
+
+The app compares detected posture against the EXPECTED prayer sequence.
+
+The app should understand the prayer flow state machine.
+
+Example sequence:
+
+standing (qiyam)
+bowing (ruku)
+standing after ruku
+sujood
+sitting
+second sujood
+standing again (or last standing if it is the final Rakaat)
+
+The app should ALWAYS know:
+
+current expected posture
+previous posture
+next valid posture
+
+The app must NOT behave like free movement detection.
+
+It must behave like a guided ordered prayer-state validator.
+
+DO NOT trigger posture detection instantly.
+
+A posture is considered VALID only if:
+
+sensor readings become stable
+movement variance drops below threshold
+posture remains stable for configurable duration
+
+Add:
+
+smoothing filters
+moving average
+low-pass filtering
+hysteresis
+debounce protection
+
+Goal:
+avoid false positives and vibration spam.
+
+Current vibration is TOO WEAK.
+
+Improve haptic feedback significantly.
+
+Use:
+
+Android VibrationEffect
+maximum safe amplitude
+repeating waveform patterns
+stronger pulse duration
+
+Create TWO DISTINCT vibration patterns:
+
+CORRECT posture vibration
+Short clear strong pulse.
+Meaning:
+"you are in the correct prayer position"
+WRONG posture vibration
+Different stronger and longer warning pattern.
+Meaning:
+"your current posture does NOT match expected prayer step"
+
+The vibration must be:
+
+easily distinguishable
+usable in crowded/noisy places
+noticeable while phone is inside pocket
+
+The app MUST continue working:
+
+with locked screen
+in background
+during battery optimization scenarios
+
+Implement:
+
+foreground service
+wake lock only if needed
+persistent sensor listener
+battery optimization handling
+
+Do NOT allow Android to suspend posture monitoring during prayer.
+
+The app should feel like:
+"a silent intelligent prayer assistant"
+
+NOT like:
+
+fitness tracker
+pedometer
+motion counter
+
+
+
+
+Focus on:
+
+Start Prayer
+Stop Prayer
+calibration
+sensitivity settings
+vibration settings
+
+Add prayer-time notifications.
+
+Features:
+
+Adhan playback when prayer time enters
+selectable muezzin voice
+mute by:
+flipping phone face-down
+pressing volume button
+
+Add:
+
+summer/winter daylight-saving adjustment option
+manual prayer time offset controls
+
+Do NOT rewrite from scratch.
+
+Keep existing codebase.
+
+Only improve:
+
+posture validation logic
+prayer sequence intelligence
+vibration strength
+background reliability
+prayer notification system
+sensor stability handling
+
+Prioritize:
+
+stability
+low false detections
+strong haptic clarity
+reliable background execution
+minimal battery drain
