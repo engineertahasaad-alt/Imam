@@ -16,6 +16,7 @@ import { useApp } from "@/context/AppContext";
 import { vibrateSuccess } from "@/lib/haptics";
 import { useColors } from "@/hooks/useColors";
 import { MotionEngine } from "@/lib/motionEngine";
+import { detectPocketSide, flipPocketSide, PocketSide } from "@/lib/pocketDetector";
 import { CalibrationData } from "@/lib/storage";
 
 interface CalibStep {
@@ -74,6 +75,7 @@ export default function CalibrationScreen() {
     Record<string, [number, number, number]>
   >({});
   const [allDone, setAllDone] = useState(false);
+  const [confirmedSide, setConfirmedSide] = useState<PocketSide>("unknown");
 
   const engineRef = useRef<MotionEngine | null>(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -141,6 +143,18 @@ export default function CalibrationScreen() {
       setCurrentStep((s) => s + 1);
       setStepState("idle");
     } else {
+      // Auto-detect pocket side from recorded vectors
+      const st = recorded.standing ?? [0, 0.98, 0.2];
+      const rk = recorded.ruku    ?? [0, 0.5, 0.8];
+      const sj = recorded.sujood  ?? [0, 0.1, 0.99];
+      const si = recorded.sitting ?? [0, 0.7, 0.6];
+      const result = detectPocketSide(
+        st as [number, number, number],
+        rk as [number, number, number],
+        sj as [number, number, number],
+        si as [number, number, number]
+      );
+      setConfirmedSide(result.side === "unknown" ? "right" : result.side);
       setAllDone(true);
     }
   }
@@ -148,11 +162,11 @@ export default function CalibrationScreen() {
   async function finishCalibration() {
     const data: CalibrationData = {
       standing: recorded.standing ?? [0, 0.98, 0.2],
-      ruku: recorded.ruku ?? [0, 0.5, 0.8],
-      sujood: recorded.sujood ?? [0, 0.1, 0.99],
-      sitting: recorded.sitting ?? [0, 0.7, 0.6],
+      ruku:     recorded.ruku    ?? [0, 0.5, 0.8],
+      sujood:   recorded.sujood  ?? [0, 0.1, 0.99],
+      sitting:  recorded.sitting ?? [0, 0.7, 0.6],
       calibratedAt: Date.now(),
-      pocketSide: "right",
+      pocketSide: confirmedSide === "unknown" ? "right" : confirmedSide,
     };
 
     await saveCalibrationData(data);
@@ -176,48 +190,110 @@ export default function CalibrationScreen() {
   const step = STEPS[currentStep];
 
   if (allDone) {
+    // Re-run detection to get the reason text for display
+    const st = recorded.standing ?? [0, 0.98, 0.2];
+    const rk = recorded.ruku    ?? [0, 0.5, 0.8];
+    const sj = recorded.sujood  ?? [0, 0.1, 0.99];
+    const si = recorded.sitting ?? [0, 0.7, 0.6];
+    const detected = detectPocketSide(
+      st as [number, number, number],
+      rk as [number, number, number],
+      sj as [number, number, number],
+      si as [number, number, number]
+    );
+
+    const confidenceColor =
+      detected.confidence === "high"   ? colors.primary :
+      detected.confidence === "medium" ? "#f59e0b" :
+                                         colors.mutedForeground;
+
     return (
-      <View
-        style={[
+      <ScrollView
+        style={{ flex: 1, backgroundColor: colors.background }}
+        contentContainerStyle={[
           styles.centered,
           {
-            backgroundColor: colors.background,
             paddingTop: insets.top + (Platform.OS === "web" ? 67 : 20),
+            paddingBottom: insets.bottom + 24,
           },
         ]}
+        showsVerticalScrollIndicator={false}
       >
-        <View
-          style={[
-            styles.successCircle,
-            { backgroundColor: colors.primary + "20" },
-          ]}
-        >
+        <View style={[styles.successCircle, { backgroundColor: colors.primary + "20" }]}>
           <Feather name="check-circle" size={60} color={colors.primary} />
         </View>
         <Text style={[styles.successTitle, { color: colors.foreground }]}>
           Calibration Complete!
         </Text>
         <Text style={[styles.successDesc, { color: colors.mutedForeground }]}>
-          Your personal motion profile has been saved. Salah Guardian will now
-          detect your prayers accurately.
+          Your motion profile has been saved. One last step — confirm which pocket you use.
         </Text>
+
+        {/* ── Pocket side detection result ── */}
+        <View style={[styles.pocketCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.pocketHeader}>
+            <Feather name="smartphone" size={18} color={colors.primary} />
+            <Text style={[styles.pocketTitle, { color: colors.foreground }]}>Phone Pocket</Text>
+            <View style={[styles.confBadge, { backgroundColor: confidenceColor + "20" }]}>
+              <Text style={[styles.confText, { color: confidenceColor }]}>
+                {detected.confidence === "high" ? "Auto-detected" :
+                 detected.confidence === "medium" ? "Likely" : "Estimated"}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={[styles.pocketReason, { color: colors.mutedForeground }]}>
+            {detected.reason}
+          </Text>
+
+          {/* Left / Right toggle */}
+          <View style={styles.pocketToggleRow}>
+            {(["left", "right"] as const).map((side) => {
+              const isSelected = confirmedSide === side;
+              return (
+                <TouchableOpacity
+                  key={side}
+                  style={[
+                    styles.pocketToggleBtn,
+                    {
+                      backgroundColor: isSelected ? colors.primary : colors.secondary,
+                      borderColor:     isSelected ? colors.primary : colors.border,
+                      flex: 1,
+                    },
+                  ]}
+                  onPress={() => setConfirmedSide(side)}
+                >
+                  <Feather
+                    name={side === "left" ? "arrow-left" : "arrow-right"}
+                    size={16}
+                    color={isSelected ? colors.primaryForeground : colors.mutedForeground}
+                  />
+                  <Text style={[
+                    styles.pocketToggleText,
+                    { color: isSelected ? colors.primaryForeground : colors.mutedForeground },
+                  ]}>
+                    {side === "left" ? "Left pocket" : "Right pocket"}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <Text style={[styles.pocketHint, { color: colors.mutedForeground }]}>
+            Keep your phone in the same pocket every time you pray for best accuracy.
+          </Text>
+        </View>
 
         <TouchableOpacity
           style={[styles.nextBtn, { backgroundColor: colors.primary }]}
           onPress={finishCalibration}
         >
-          <Text
-            style={[styles.nextBtnText, { color: colors.primaryForeground }]}
-          >
-            Start Using App
+          <Feather name="check" size={20} color={colors.primaryForeground} />
+          <Text style={[styles.nextBtnText, { color: colors.primaryForeground }]}>
+            Confirm &amp; Start
           </Text>
-          <Feather
-            name="arrow-right"
-            size={20}
-            color={colors.primaryForeground}
-          />
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     );
   }
 
@@ -361,10 +437,8 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   centered: {
-    flex: 1,
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 32,
+    paddingHorizontal: 28,
     gap: 16,
   },
   progress: {
@@ -501,5 +575,59 @@ const styles = StyleSheet.create({
   nextBtnText: {
     fontSize: 17,
     fontWeight: "700",
+  },
+
+  // Pocket detection card
+  pocketCard: {
+    width: "100%",
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 12,
+  },
+  pocketHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  pocketTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    flex: 1,
+  },
+  confBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  confText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  pocketReason: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  pocketToggleRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  pocketToggleBtn: {
+    borderRadius: 12,
+    borderWidth: 1.5,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  pocketToggleText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  pocketHint: {
+    fontSize: 11,
+    lineHeight: 16,
+    textAlign: "center",
   },
 });

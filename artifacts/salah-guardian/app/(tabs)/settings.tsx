@@ -40,7 +40,7 @@ const STRENGTH_LABELS: Record<string, { label: string; hint: string }> = {
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { settings, updateSettings, calibration } = useApp();
+  const { settings, updateSettings, calibration, saveCalibrationData } = useApp();
 
   const sensitivity       = settings.sensitivity       ?? 3;
   const vibrationStrength = settings.vibrationStrength ?? "high";
@@ -351,6 +351,46 @@ export default function SettingsScreen() {
             </Text>
           </View>
         </SettingsRow>
+
+        {/* Pocket side toggle */}
+        {calibration && (
+          <SettingsRow colors={colors}>
+            <Feather name="smartphone" size={18} color={colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Phone Pocket</Text>
+              <Text style={[styles.rowValue, { color: colors.mutedForeground }]}>
+                {calibration.pocketSide === "left"  ? "Left trouser pocket" :
+                 calibration.pocketSide === "right" ? "Right trouser pocket" :
+                                                      "Not set"}
+              </Text>
+            </View>
+            <View style={styles.pocketToggleRow}>
+              {(["left", "right"] as const).map((side) => {
+                const active = calibration.pocketSide === side;
+                return (
+                  <TouchableOpacity
+                    key={side}
+                    style={[
+                      styles.pocketBtn,
+                      {
+                        backgroundColor: active ? colors.primary        : colors.secondary,
+                        borderColor:     active ? colors.primary        : colors.border,
+                      },
+                    ]}
+                    onPress={async () => {
+                      await saveCalibrationData({ ...calibration, pocketSide: side });
+                    }}
+                  >
+                    <Text style={[styles.pocketBtnText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
+                      {side === "left" ? "L" : "R"}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </SettingsRow>
+        )}
+
         <TouchableOpacity
           style={[styles.calibrateBtn, { borderColor: colors.primary }]}
           onPress={() => router.push("/onboarding/calibration")}
@@ -482,6 +522,10 @@ const styles = StyleSheet.create({
 
   strengthChip: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 8, alignItems: "center", gap: 2 },
   strengthHint: { fontSize: 10 },
+
+  pocketToggleRow: { flexDirection: "row", gap: 6 },
+  pocketBtn:       { width: 36, height: 36, borderRadius: 10, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  pocketBtnText:   { fontSize: 14, fontWeight: "800" },
 
   calibrateBtn:     { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 16, margin: 16, marginTop: 4, justifyContent: "center" },
   calibrateBtnText: { fontSize: 14, fontWeight: "600" },
