@@ -4,6 +4,7 @@ import {
   Animated,
   Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -13,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
 import {
+  preloadBeep,
   vibrateAction,
   vibrateCorrect,
   vibratePrayerComplete,
@@ -58,20 +60,17 @@ const POSITION_GUIDE: Record<BodyPosition, string> = {
   UNKNOWN:  "Keep the phone still in your pocket",
 };
 
-const FSM_STEPS = [
+const FSM_STEPS_ALL = [
   "STANDING", "RUKU", "STANDING_RETURN",
   "SUJOOD_1", "BETWEEN_SAJDAHS", "SUJOOD_2", "TASHAHUD",
 ] as const;
 
-const FSM_LABELS: Record<string, string> = {
-  STANDING:        "Qiyam",
-  RUKU:            "Ruku",
-  STANDING_RETURN: "I'tidal",
-  SUJOOD_1:        "Sujood 1",
-  BETWEEN_SAJDAHS: "Jalsa",
-  SUJOOD_2:        "Sujood 2",
-  TASHAHUD:        "Tashahud",
-};
+type FsmStep = typeof FSM_STEPS_ALL[number];
+
+/** Determine whether the given rakaat number should end with a Tashahud. */
+function rakaatHasTashahud(rakaatNum: number, totalRakaats: number): boolean {
+  return rakaatNum % 2 === 0 || rakaatNum === totalRakaats;
+}
 
 export function DetectionModal({
   visible,
@@ -109,6 +108,11 @@ export function DetectionModal({
   const confAnim   = useRef(new Animated.Value(0)).current;
   const stabAnim   = useRef(new Animated.Value(1)).current;
   const holdAnim   = useRef(new Animated.Value(0)).current;
+
+  // Pre-load beep sound when modal mounts
+  useEffect(() => {
+    preloadBeep();
+  }, []);
 
   useEffect(() => {
     if (visible) startDetection();
@@ -162,9 +166,9 @@ export function DetectionModal({
     setAltitudeDrop(0);
     setHoldDurationMs(3000);
 
+    // Pass totalRakaats so the engine gives correct Tashahud guidance
     const engine = new MotionEngine((event: DetectionEvent) => {
 
-      // ── Stability heartbeat ──────────────────────────────────────────────
       if (event.type === "STABILITY_UPDATE") {
         if (event.stability  !== undefined) setStability(event.stability);
         if (event.confidence !== undefined) setConfidence(event.confidence);
@@ -178,7 +182,6 @@ export function DetectionModal({
         if (event.holdDurationMs     !== undefined) setHoldDurationMs(event.holdDurationMs);
       }
 
-      // ── Posture validation ──────────────────────────────────────────────
       if (event.type === "POSTURE_VALIDATION") {
         if (event.position)            setPosition(event.position);
         if (event.expectedPosition)    setExpected(event.expectedPosition);
@@ -191,19 +194,13 @@ export function DetectionModal({
         if (event.altitudeDrop       !== undefined) setAltitudeDrop(event.altitudeDrop);
         if (event.holdDurationMs     !== undefined) setHoldDurationMs(event.holdDurationMs);
 
-        // ── WRONG posture (including repeats) ──────────────────────────
         if (event.isCorrect === false) {
           setHoldProgress(0);
           setIsConfirmed(false);
+          // Beep + vibration for wrong posture
           vibrateWrong(vibrationEnabled, vibrationStrength);
         }
 
-        // ── Holding in correct position — update progress bar ──────────
-        if (event.isCorrect === true && event.isConfirmed === false) {
-          // No vibration during hold — just show the progress bar
-        }
-
-        // ── CONFIRMED correct after 3-second hold ─────────────────────
         if (event.isCorrect === true && event.isConfirmed === true) {
           setHoldProgress(1);
           setIsConfirmed(true);
@@ -212,7 +209,6 @@ export function DetectionModal({
         }
       }
 
-      // ── FSM position change (after confirmed hold) ───────────────────
       if (event.type === "POSITION_CHANGE" && event.position) {
         setPosition(event.position);
         if (event.confidence !== undefined) setConfidence(event.confidence);
@@ -222,7 +218,6 @@ export function DetectionModal({
         setIsCorrect(null);
       }
 
-      // ── Rak'ah complete ─────────────────────────────────────────────
       if (event.type === "RAKAH_COMPLETE") {
         const count = event.rakaatCount ?? 0;
         setRakaatCount(count);
@@ -231,8 +226,6 @@ export function DetectionModal({
         vibrateRakaatComplete(vibrationEnabled);
       }
 
-      // ── Invalid-sequence alert (confirmed positional skip) ────────────────
-      // Fires after INVALID_SEQ_VALIDATE_MS of holding an out-of-order position
       if (event.type === "INVALID_SEQUENCE") {
         vibrateWrong(vibrationEnabled, vibrationStrength);
         if (event.message) {
@@ -240,7 +233,7 @@ export function DetectionModal({
         }
       }
 
-    }, sensitivity);
+    }, sensitivity, expectedRakaat);
 
     if (calibration) {
       engine.setCalibration({
@@ -293,7 +286,36 @@ export function DetectionModal({
   const showHoldBar = isCorrect === true && !isConfirmed && holdProgress > 0;
   const baroBoostActive = barometerAvailable && holdDurationMs < 3000 && isCorrect === true && !isConfirmed;
 
-  const fsmIdx = FSM_STEPS.indexOf(fsmState as (typeof FSM_STEPS)[number]);
+  // ── Prayer-aware FSM step list ────────────────────────────────────────────
+  // Current rakaat being performed = completed rakaats + 1
+  const currentRakaat = rakaatCount + 1;
+  const thisRakaatHasTashahud = rakaatHasTashahud(currentRakaat, expectedRakaat);
+  const isFinalTashahud = rakaatCount === expectedRakaat; // all rakaats done → final tashahud
+
+  const FSM_STEPS: readonly FsmStep[] = thisRakaatHasTashahud
+    ? FSM_STEPS_ALL
+    : (["STANDING", "RUKU", "STANDING_RETURN", "SUJOOD_1", "BETWEEN_SAJDAHS", "SUJOOD_2"] as const);
+
+  const FSM_LABELS: Record<string, string> = {
+    STANDING:        "Qiyam",
+    RUKU:            "Ruku",
+    STANDING_RETURN: "I'tidal",
+    SUJOOD_1:        "Sujood 1",
+    BETWEEN_SAJDAHS: "Jalsa",
+    SUJOOD_2:        "Sujood 2",
+    TASHAHUD: isFinalTashahud ? "Final Tashahud · Salam" : "1st Tashahud",
+  };
+
+  const fsmIdx = FSM_STEPS.indexOf(fsmState as FsmStep);
+
+  // Next label for validation card
+  const nextLabel =
+    nextExpected === "RUKU"     ? "Ruku" :
+    nextExpected === "STANDING" ? "Stand" :
+    nextExpected === "SUJOOD"   ? "Sujood" :
+    nextExpected === "SITTING"  ? (thisRakaatHasTashahud && fsmState === "SUJOOD_2" ? "Tashahud" : "Sit") :
+    nextExpected === "UNKNOWN"  ? "Salam" :
+    "—";
 
   return (
     <Modal
@@ -302,11 +324,18 @@ export function DetectionModal({
       presentationStyle="pageSheet"
       onRequestClose={onCancel}
     >
-      <View
-        style={[
+      <ScrollView
+        style={{ flex: 1, backgroundColor: colors.background }}
+        contentContainerStyle={[
           styles.container,
-          { backgroundColor: colors.background, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 },
+          {
+            paddingTop: insets.top + 16,
+            paddingBottom: insets.bottom + 16,
+          },
         ]}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <View style={styles.header}>
@@ -327,6 +356,30 @@ export function DetectionModal({
           >
             <Feather name="x" size={18} color={colors.foreground} />
           </TouchableOpacity>
+        </View>
+
+        {/* ── Rakaat counter (compact, at top) ────────────────────────────── */}
+        <View style={[styles.rakaatCardCompact, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.rakaatLabelSm, { color: colors.mutedForeground }]}>Rak'aat</Text>
+            <Text style={[styles.rakaatNumberSm, { color: colors.foreground }]}>
+              {rakaatCount}
+              <Text style={[styles.rakaatTotalSm, { color: colors.mutedForeground }]}>/{expectedRakaat}</Text>
+            </Text>
+          </View>
+          <View style={styles.progressDots}>
+            {Array.from({ length: expectedRakaat }).map((_, i) => (
+              <View
+                key={i}
+                style={[styles.dot, { backgroundColor: i < rakaatCount ? colors.primary : colors.border }]}
+              />
+            ))}
+          </View>
+          <View style={[styles.rakaatBadge, { backgroundColor: colors.primary + "20" }]}>
+            <Text style={[styles.rakaatBadgeText, { color: colors.primary }]}>
+              {prayerName}
+            </Text>
+          </View>
         </View>
 
         {/* ── Position circle ─────────────────────────────────────────────── */}
@@ -386,15 +439,11 @@ export function DetectionModal({
             <View>
               <Text style={[styles.nextLabel, { color: colors.mutedForeground }]}>Next</Text>
               <Text style={[styles.nextPosition, { color: colors.mutedForeground }]}>
-                {nextExpected === "RUKU"     ? "Ruku" :
-                 nextExpected === "STANDING" ? "Stand" :
-                 nextExpected === "SUJOOD"   ? "Sujood" :
-                 nextExpected === "SITTING"  ? "Sit" : "—"}
+                {nextLabel}
               </Text>
             </View>
           </View>
 
-          {/* 3-second hold progress bar */}
           {showHoldBar && (
             <View style={[styles.holdTrack, { backgroundColor: colors.primary + "25" }]}>
               <Animated.View
@@ -417,76 +466,21 @@ export function DetectionModal({
           </Text>
         </View>
 
-        {/* ── Quality bars ─────────────────────────────────────────────────── */}
-        <View style={[styles.qualityCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.qualityRow}>
-            <Text style={[styles.qualityLabel, { color: colors.mutedForeground }]}>Match confidence</Text>
-            <Text style={[styles.qualityPct, { color: colors.primary }]}>{Math.round(confidence * 100)}%</Text>
-          </View>
-          <View style={[styles.barTrack, { backgroundColor: colors.secondary }]}>
-            <Animated.View
-              style={[styles.barFill, {
-                backgroundColor: colors.primary,
-                width: confAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
-              }]}
-            />
-          </View>
-
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-          <View style={styles.qualityRow}>
-            <Text style={[styles.qualityLabel, { color: colors.mutedForeground }]}>Phone stability</Text>
-            <Text style={[styles.qualityPct, { color: stabilityColor }]}>{Math.round(stability * 100)}%</Text>
-          </View>
-          <View style={[styles.barTrack, { backgroundColor: colors.secondary }]}>
-            <Animated.View
-              style={[styles.barFill, {
-                backgroundColor: stabilityColor,
-                width: stabAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
-              }]}
-            />
-          </View>
-
-          {stability < 0.4 && (
-            <Text style={[styles.stabilityHint, { color: colors.warning }]}>
-              Hold still — stabilizing…
+        {/* ── FSM step dots for current rakaat ────────────────────────────── */}
+        <View style={[styles.fsmCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.fsmHeaderRow}>
+            <Text style={[styles.fsmTitle, { color: colors.mutedForeground }]}>
+              Rak'ah {currentRakaat} Steps
             </Text>
-          )}
-
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-          {/* Barometer status chip */}
-          <View style={styles.baroRow}>
-            <View
-              style={[
-                styles.baroChip,
-                {
-                  backgroundColor: barometerAvailable ? colors.primary + "15" : colors.secondary,
-                  borderColor:     barometerAvailable ? colors.primary + "40" : colors.border,
-                },
-              ]}
-            >
-              <Feather
-                name={barometerAvailable ? "thermometer" : "thermometer"}
-                size={11}
-                color={barometerAvailable ? colors.primary : colors.mutedForeground}
-              />
-              <Text style={[styles.baroChipText, { color: barometerAvailable ? colors.primary : colors.mutedForeground }]}>
-                {barometerAvailable
-                  ? `Barometer  ${altitudeDrop < -0.32 ? "· Sujood confirmed ⚡" : altitudeDrop < -0.15 ? `· ${Math.abs(altitudeDrop).toFixed(2)}m drop` : "· active"}`
-                  : "Barometer unavailable"}
-              </Text>
-            </View>
-            {baroBoostActive && (
-              <View style={[styles.baroBoostBadge, { backgroundColor: "#f59e0b20", borderColor: "#f59e0b40" }]}>
-                <Text style={{ fontSize: 10, color: "#f59e0b", fontWeight: "700" }}>⚡ Fast confirm</Text>
+            {thisRakaatHasTashahud && (
+              <View style={[styles.tashahhudBadge, { backgroundColor: colors.warning + "20" }]}>
+                <Text style={[styles.tashahhudBadgeText, { color: colors.warning }]}>
+                  {isFinalTashahud ? "Final Tashahud" : "1st Tashahud"}
+                </Text>
               </View>
             )}
           </View>
-        </View>
 
-        {/* ── FSM step dots ─────────────────────────────────────────────────── */}
-        <View style={[styles.fsmCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           {/* Progress dots row */}
           <View style={styles.fsmRow}>
             {FSM_STEPS.map((step, i) => {
@@ -557,22 +551,70 @@ export function DetectionModal({
           </View>
         </View>
 
-        {/* ── Rak'aat counter ─────────────────────────────────────────────── */}
-        <View style={[styles.rakaatCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.rakaatNumber, { color: colors.foreground }]}>
-            {rakaatCount}
-            <Text style={[styles.rakaatTotal, { color: colors.mutedForeground }]}>
-              /{expectedRakaat}
+        {/* ── Quality bars ─────────────────────────────────────────────────── */}
+        <View style={[styles.qualityCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.qualityRow}>
+            <Text style={[styles.qualityLabel, { color: colors.mutedForeground }]}>Match confidence</Text>
+            <Text style={[styles.qualityPct, { color: colors.primary }]}>{Math.round(confidence * 100)}%</Text>
+          </View>
+          <View style={[styles.barTrack, { backgroundColor: colors.secondary }]}>
+            <Animated.View
+              style={[styles.barFill, {
+                backgroundColor: colors.primary,
+                width: confAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
+              }]}
+            />
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          <View style={styles.qualityRow}>
+            <Text style={[styles.qualityLabel, { color: colors.mutedForeground }]}>Phone stability</Text>
+            <Text style={[styles.qualityPct, { color: stabilityColor }]}>{Math.round(stability * 100)}%</Text>
+          </View>
+          <View style={[styles.barTrack, { backgroundColor: colors.secondary }]}>
+            <Animated.View
+              style={[styles.barFill, {
+                backgroundColor: stabilityColor,
+                width: stabAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
+              }]}
+            />
+          </View>
+
+          {stability < 0.4 && (
+            <Text style={[styles.stabilityHint, { color: colors.warning }]}>
+              Hold still — stabilizing…
             </Text>
-          </Text>
-          <Text style={[styles.rakaatLabel, { color: colors.mutedForeground }]}>Rak'aat completed</Text>
-          <View style={styles.progressDots}>
-            {Array.from({ length: expectedRakaat }).map((_, i) => (
-              <View
-                key={i}
-                style={[styles.dot, { backgroundColor: i < rakaatCount ? colors.primary : colors.border }]}
+          )}
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          <View style={styles.baroRow}>
+            <View
+              style={[
+                styles.baroChip,
+                {
+                  backgroundColor: barometerAvailable ? colors.primary + "15" : colors.secondary,
+                  borderColor:     barometerAvailable ? colors.primary + "40" : colors.border,
+                },
+              ]}
+            >
+              <Feather
+                name="thermometer"
+                size={11}
+                color={barometerAvailable ? colors.primary : colors.mutedForeground}
               />
-            ))}
+              <Text style={[styles.baroChipText, { color: barometerAvailable ? colors.primary : colors.mutedForeground }]}>
+                {barometerAvailable
+                  ? `Barometer  ${altitudeDrop < -0.32 ? "· Sujood confirmed ⚡" : altitudeDrop < -0.15 ? `· ${Math.abs(altitudeDrop).toFixed(2)}m drop` : "· active"}`
+                  : "Barometer unavailable"}
+              </Text>
+            </View>
+            {baroBoostActive && (
+              <View style={[styles.baroBoostBadge, { backgroundColor: "#f59e0b20", borderColor: "#f59e0b40" }]}>
+                <Text style={{ fontSize: 10, color: "#f59e0b", fontWeight: "700" }}>⚡ Fast confirm</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -610,30 +652,40 @@ export function DetectionModal({
         </View>
 
         <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-          Short vibration = confirmed · Long repeated = adjust posture
+          Short vibration = confirmed · Beep + long = adjust posture
         </Text>
-      </View>
+      </ScrollView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 20 },
+  container: { paddingHorizontal: 20, gap: 12 },
 
-  header:    { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
+  header:    { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   title:     { fontSize: 17, fontWeight: "700" },
   timerRow:  { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
   timerText: { fontSize: 12, fontWeight: "600", fontVariant: ["tabular-nums"] as any },
   iconBtn:   { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
 
-  centerSection: { alignItems: "center", marginBottom: 12 },
-  positionCircle:{ width: 112, height: 112, borderRadius: 56, borderWidth: 2, alignItems: "center", justifyContent: "center", marginBottom: 8 },
-  positionInner: { width: 70, height: 70, borderRadius: 35, alignItems: "center", justifyContent: "center" },
+  // Compact rakaat card at top
+  rakaatCardCompact: {
+    borderRadius: 14, borderWidth: 1, padding: 12,
+    flexDirection: "row", alignItems: "center", gap: 12,
+  },
+  rakaatLabelSm:  { fontSize: 11, color: "gray" },
+  rakaatNumberSm: { fontSize: 28, fontWeight: "700", lineHeight: 34 },
+  rakaatTotalSm:  { fontSize: 16 },
+  rakaatBadge:    { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
+  rakaatBadgeText:{ fontSize: 12, fontWeight: "700" },
+
+  centerSection: { alignItems: "center" },
+  positionCircle:{ width: 100, height: 100, borderRadius: 50, borderWidth: 2, alignItems: "center", justifyContent: "center", marginBottom: 6 },
+  positionInner: { width: 62, height: 62, borderRadius: 31, alignItems: "center", justifyContent: "center" },
   positionLabel: { fontSize: 14, fontWeight: "600" },
   webNote:       { fontSize: 11, marginTop: 6, textAlign: "center" },
 
-  // Validation card
-  validationCard: { borderRadius: 14, borderWidth: 1, padding: 12, marginBottom: 10, gap: 6 },
+  validationCard: { borderRadius: 14, borderWidth: 1, padding: 12, gap: 6 },
   validationRow:  { flexDirection: "row", alignItems: "center", gap: 10 },
   validationTitle:{ fontSize: 11, fontWeight: "600" },
   validationPosition: { fontSize: 14, fontWeight: "700" },
@@ -641,12 +693,26 @@ const styles = StyleSheet.create({
   nextLabel:      { fontSize: 10, textAlign: "right" },
   nextPosition:   { fontSize: 12, fontWeight: "600", textAlign: "right" },
 
-  // 3-second hold bar
   holdTrack: { height: 6, borderRadius: 3, overflow: "hidden", marginTop: 2 },
   holdFill:  { height: 6, borderRadius: 3 },
 
-  // Quality bars
-  qualityCard:  { borderRadius: 14, borderWidth: 1, padding: 12, marginBottom: 10 },
+  // FSM card
+  fsmCard:       { borderRadius: 14, borderWidth: 1, padding: 12 },
+  fsmHeaderRow:  { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
+  fsmTitle:      { fontSize: 11, fontWeight: "600", letterSpacing: 0.3 },
+  tashahhudBadge:{ borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
+  tashahhudBadgeText: { fontSize: 10, fontWeight: "700" },
+  fsmRow:        { flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 10 },
+  fsmDot:        { width: 10, height: 10, borderRadius: 5 },
+  fsmLine:       { flex: 1, height: 2, marginHorizontal: 2 },
+  fsmStepList:   { gap: 5 },
+  fsmStepRow:    { flexDirection: "row", alignItems: "center", gap: 8 },
+  fsmStepBullet: { width: 7, height: 7, borderRadius: 4 },
+  fsmStepName:   { fontSize: 12, flex: 1 },
+  fsmCurrentBadge:  { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 },
+  fsmCurrentBadgeText: { fontSize: 9, fontWeight: "700" },
+
+  qualityCard:  { borderRadius: 14, borderWidth: 1, padding: 12 },
   qualityRow:   { flexDirection: "row", justifyContent: "space-between", marginBottom: 5 },
   qualityLabel: { fontSize: 11, fontWeight: "500" },
   qualityPct:   { fontSize: 11, fontWeight: "700" },
@@ -659,37 +725,17 @@ const styles = StyleSheet.create({
   baroChipText:  { fontSize: 10, fontWeight: "600" },
   baroBoostBadge:{ borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
 
-  // FSM card
-  fsmCard:           { borderRadius: 14, borderWidth: 1, padding: 12, marginBottom: 10 },
-  fsmRow:            { flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 12 },
-  fsmDot:            { width: 10, height: 10, borderRadius: 5 },
-  fsmLine:           { flex: 1, height: 2, marginHorizontal: 2 },
-  // Vertical step list
-  fsmStepList:       { gap: 6 },
-  fsmStepRow:        { flexDirection: "row", alignItems: "center", gap: 8 },
-  fsmStepBullet:     { width: 7, height: 7, borderRadius: 4 },
-  fsmStepName:       { fontSize: 12, flex: 1 },
-  fsmCurrentBadge:   { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 },
-  fsmCurrentBadgeText: { fontSize: 9, fontWeight: "700" },
-
-  // Rak'aat
-  rakaatCard:   { borderRadius: 14, borderWidth: 1, padding: 12, alignItems: "center", marginBottom: 10 },
-  rakaatNumber: { fontSize: 42, fontWeight: "700", lineHeight: 50 },
-  rakaatTotal:  { fontSize: 22 },
-  rakaatLabel:  { fontSize: 11, marginBottom: 7 },
-  progressDots: { flexDirection: "row", gap: 8, flexWrap: "wrap", justifyContent: "center" },
+  progressDots: { flexDirection: "row", gap: 7, flexWrap: "wrap", flex: 1, justifyContent: "center" },
   dot:          { width: 10, height: 10, borderRadius: 5 },
 
-  // Events
-  eventLog:  { alignItems: "center", marginBottom: 8, gap: 2 },
+  eventLog:  { alignItems: "center", gap: 2 },
   eventText: { fontSize: 12, fontWeight: "500" },
 
-  // Buttons
   buttons:      { gap: 8 },
   completeBtn:  { borderRadius: 14, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   completeBtnText: { fontSize: 16, fontWeight: "700" },
   cancelButton: { borderRadius: 14, paddingVertical: 12, borderWidth: 1, alignItems: "center" },
   cancelBtnText:{ fontSize: 14, fontWeight: "500" },
 
-  hint: { textAlign: "center", fontSize: 10, marginTop: 8, lineHeight: 15 },
+  hint: { textAlign: "center", fontSize: 10, lineHeight: 15 },
 });

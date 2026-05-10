@@ -5,6 +5,7 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -17,9 +18,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/context/AppContext";
 
-// Suppress Expo Go SDK 53+ push notification console overlay.
-// Remote push notifications are unavailable in Expo Go; local scheduled
-// notifications still work correctly in development builds and production.
 LogBox.ignoreLogs([
   "expo-notifications: Android Push notifications",
   "[expo-notifications]",
@@ -46,6 +44,7 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    ...MaterialCommunityIcons.font,
   });
 
   const [ready, setReady] = useState(Platform.OS === "web");

@@ -189,18 +189,46 @@ export class MotionEngine {
   // ── Callback ─────────────────────────────────────────────────────────────
   private onEvent: ((event: DetectionEvent) => void) | null = null;
 
+  // ── Prayer context (for tashahud guidance) ───────────────────────────────
+  private totalRakaats: number = 4;
+
   /**
-   * @param onEvent     event callback
-   * @param sensitivity 1 (most stable) → 5 (most responsive), default 3
+   * @param onEvent      event callback
+   * @param sensitivity  1 (most stable) → 5 (most responsive), default 3
+   * @param totalRakaats total rakaats for this prayer (2, 3, or 4), default 4
    */
   constructor(
     onEvent: (event: DetectionEvent) => void,
-    sensitivity: number = 3
+    sensitivity: number = 3,
+    totalRakaats: number = 4
   ) {
     this.onEvent = onEvent;
+    this.totalRakaats = clamp(Math.round(totalRakaats), 2, 4);
     const s = clamp(Math.round(sensitivity), 1, 5);
     this.minVotes         = 10 - s;          // 1→9, 3→7, 5→5
     this.minPositionHoldMs = 2400 - s * 400; // 1→2000ms, 3→1000ms, 5→400ms
+  }
+
+  /**
+   * Returns true when the rakaat that is about to be completed (rakaatCount+1)
+   * should be followed by a Tashahud sitting.
+   * Rules:
+   *   - Every even rakaat (2nd, 4th) has a Tashahud
+   *   - The last rakaat always has a Tashahud (Final Tashahud + Salam)
+   */
+  private nextRakaatHasTashahud(): boolean {
+    const completing = this.rakaatCount + 1; // rakaat number being completed
+    const isEven = completing % 2 === 0;
+    const isFinal = completing === this.totalRakaats;
+    return isEven || isFinal;
+  }
+
+  /**
+   * Returns true when current TASHAHUD state is the Final Tashahud
+   * (the last rakaat was completed → Salam ends prayer).
+   */
+  private isFinalTashahud(): boolean {
+    return this.rakaatCount === this.totalRakaats;
   }
 
   // ── Calibration ───────────────────────────────────────────────────────────
@@ -517,8 +545,12 @@ export class MotionEngine {
       case "STANDING_RETURN": return "SUJOOD";
       case "SUJOOD_1":        return "SITTING";
       case "BETWEEN_SAJDAHS": return "SUJOOD";
-      case "SUJOOD_2":        return "STANDING";
-      case "TASHAHUD":        return "STANDING";
+      // After SUJOOD_2, the next expected depends on whether this rakaat
+      // should be followed by a Tashahud sitting or a return to Standing.
+      case "SUJOOD_2":        return this.nextRakaatHasTashahud() ? "SITTING" : "STANDING";
+      // After TASHAHUD: if it's the Final Tashahud stay UNKNOWN (Salam → done),
+      // otherwise stand up for the next rakaat.
+      case "TASHAHUD":        return this.isFinalTashahud() ? "UNKNOWN" : "STANDING";
       default:                return "UNKNOWN";
     }
   }

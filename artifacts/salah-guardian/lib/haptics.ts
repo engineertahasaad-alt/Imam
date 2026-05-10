@@ -1,3 +1,4 @@
+import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
 
@@ -19,15 +20,51 @@ async function rigid() {
   await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
 }
 
+// ── Beep sound ───────────────────────────────────────────────────────────────
+
+let _beepSound: Audio.Sound | null = null;
+let _beepLoading = false;
+
+async function getBeepSound(): Promise<Audio.Sound | null> {
+  if (_beepSound) return _beepSound;
+  if (_beepLoading) return null;
+  _beepLoading = true;
+  try {
+    await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+    const { sound } = await Audio.Sound.createAsync(
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require("../assets/audio/beep.wav"),
+      { shouldPlay: false, volume: 1.0 }
+    );
+    _beepSound = sound;
+    return sound;
+  } catch {
+    return null;
+  } finally {
+    _beepLoading = false;
+  }
+}
+
+/** Pre-load the beep sound so it's ready instantly when needed. */
+export function preloadBeep() {
+  if (IS_NATIVE) getBeepSound();
+}
+
+/** Play a short beep to signal a wrong posture (in addition to vibration). */
+export async function playWrongBeep(enabled: boolean) {
+  if (!IS_NATIVE || !enabled) return;
+  try {
+    const sound = await getBeepSound();
+    if (!sound) return;
+    await sound.setPositionAsync(0);
+    await sound.playAsync();
+  } catch { /* ignore */ }
+}
+
 // ── Two primary patterns ────────────────────────────────────────────────────
 
 /**
  * CORRECT posture confirmed — short sharp double-tap.
- * Meaning: "You are in the right prayer position."
- * Strength variants:
- *   low    → single heavy
- *   medium → heavy + 60ms + heavy
- *   high   → heavy + 50ms + heavy + 50ms + medium  (triple rapid)
  */
 export async function vibrateCorrect(
   enabled: boolean,
@@ -56,13 +93,7 @@ export async function vibrateCorrect(
 }
 
 /**
- * WRONG posture detected — slower triple warning.
- * Meaning: "Your posture does NOT match the expected prayer step."
- * Clearly different feel from vibrateCorrect — longer, more insistent.
- * Strength variants:
- *   low    → heavy + 130ms + heavy
- *   medium → heavy + 120ms + heavy + 120ms + heavy
- *   high   → heavy + 110ms + heavy + 110ms + heavy + 110ms + heavy  (quad)
+ * WRONG posture detected — beep + slower triple warning vibration.
  */
 export async function vibrateWrong(
   enabled: boolean,
@@ -70,6 +101,8 @@ export async function vibrateWrong(
 ) {
   if (!IS_NATIVE || !enabled) return;
   try {
+    // Play beep and vibration simultaneously
+    playWrongBeep(enabled);
     switch (strength) {
       case "low":
         await heavy();
@@ -98,13 +131,6 @@ export async function vibrateWrong(
 
 // ── Position-specific patterns ──────────────────────────────────────────────
 
-/**
- * Distinct haptic per prayer body position:
- *   RUKU    – single heavy (bow down)
- *   SUJOOD  – heavy + gap + medium (two-part, body settling)
- *   STANDING– medium (standing back up)
- *   SITTING – rigid (brief, firm pause)
- */
 export async function vibratePosition(
   position: BodyPosition,
   enabled: boolean
