@@ -1,0 +1,245 @@
+IMPORTANT:
+DO NOT rebuild the app.
+DO NOT change the existing architecture unless absolutely necessary.
+DO NOT remove, replace, or break any existing feature.
+DO NOT refactor unrelated files.
+ONLY add the requested features incrementally and safely.
+
+The application already works and contains existing prayer posture detection logic.
+Your task is to IMPROVE and EXTEND the current implementation carefully.
+
+====================================================
+GOAL
+====================================================
+
+Improve the prayer posture detection accuracy to the maximum practical level using smartphone motion sensors while the phone is inside the user's pocket during الصلاة.
+
+Also add:
+1) intelligent wrong-position alert system
+2) adhan feature with famous adhan voices
+
+WITHOUT breaking any existing functionality.
+
+====================================================
+PART 1 — ADVANCED PRAYER DETECTION
+====================================================
+
+Upgrade the existing posture detection system using a HYBRID DETECTION ENGINE.
+
+The system must NOT rely on a single sensor.
+
+Use Sensor Fusion:
+- Accelerometer
+- Gyroscope
+- Gravity Sensor
+- Linear Acceleration
+- Device Orientation
+
+The app should intelligently detect:
+- Standing (Qiyam)
+- Bowing (Ruku)
+- Standing after Ruku (I'tidal)
+- Sujood
+- Sitting (Jalsa/Tashahhud)
+
+====================================================
+STATE MACHINE LOGIC
+====================================================
+
+Implement a strict prayer state machine.
+
+Correct sequence example:
+Qiyam → Ruku → I'tidal → Sujood → Sitting → Sujood → Qiyam
+
+The detector should use the EXPECTED NEXT STATE to improve accuracy.
+
+Example:
+If the user is currently in Qiyam:
+Expected next state is Ruku.
+Direct transition to Sujood should have low confidence.
+
+This should significantly reduce false detections.
+
+====================================================
+TIMING INTELLIGENCE
+====================================================
+
+Add timing analysis:
+- Minimum posture duration
+- Transition duration
+- Stability analysis
+- Ignore extremely fast accidental movements
+
+This should filter noise and random pocket motion.
+
+====================================================
+CONFIDENCE SCORE
+====================================================
+
+Each detected posture must produce a confidence score.
+
+Example:
+- 95% confidence
+- 70% confidence
+- 40% confidence
+
+The app should only confirm posture transitions when:
+- confidence is high enough
+AND/OR
+- posture stability duration is sufficient
+
+====================================================
+MOTION SIGNATURES
+====================================================
+
+Each prayer posture should use:
+- angle patterns
+- movement direction
+- transition speed
+- stability behavior
+- micro-motion analysis
+
+DO NOT rely on orientation alone.
+
+Especially improve differentiation between:
+- Sujood
+- Sitting
+
+using:
+- previous posture
+- motion direction
+- duration
+- stability
+- transition profile
+
+====================================================
+ERROR DETECTION + ALERTS
+====================================================
+
+Add intelligent invalid-prayer-state detection.
+
+Examples:
+- skipping Ruku
+- standing too early
+- invalid sequence
+- incorrect transition
+- unexpected movement
+
+When the system is highly confident that the user entered an invalid posture/state:
+- play a short gentle beep
+OR
+- vibration
+
+IMPORTANT:
+DO NOT trigger alerts aggressively.
+Avoid annoying the user with false positives.
+
+Alerts should happen ONLY after:
+- confirmed invalid state
+- high confidence
+- brief validation window
+
+====================================================
+BATTERY + PERFORMANCE
+====================================================
+
+The app must remain:
+- lightweight
+- battery efficient
+- responsive
+- offline-first
+
+Avoid heavy ML models for now.
+
+Prefer:
+- rule engine
+- sensor fusion
+- intelligent heuristics
+- state machine logic
+
+====================================================
+PART 2 — ADHAN FEATURE
+====================================================
+
+Add full prayer time and adhan support.
+
+Requirements:
+- automatic prayer time calculation based on user location
+- support all daily prayers
+- local notifications
+- background scheduling
+
+When prayer time starts:
+- play adhan automatically
+
+Add support for multiple famous adhan voices.
+
+Examples:
+- Mishary Rashid Alafasy
+- Abdul Basit
+- Madinah Adhan
+- Makkah Adhan
+
+Allow the user to:
+- choose adhan voice
+- enable/disable adhan
+- adjust volume
+- test adhan sound
+
+IMPORTANT:
+Adhan playback must work reliably even when the app is closed/backgrounded.
+
+====================================================
+UI REQUIREMENTS
+====================================================
+
+DO NOT redesign the entire UI.
+
+Only add minimal clean additions for:
+- adhan settings
+- alert settings
+- calibration improvements
+
+Maintain current app identity and existing UX.
+
+====================================================
+SAFETY RULES
+====================================================
+
+VERY IMPORTANT:
+- Do not remove existing features.
+- Do not rewrite the project from scratch.
+- Do not replace working modules unnecessarily.
+- Do not change unrelated files.
+- Do not introduce breaking changes.
+- Preserve all current functionality.
+- Extend incrementally only.
+
+Before editing:
+1) analyze the current codebase carefully
+2) identify reusable existing logic
+3) extend safely
+4) keep backward compatibility
+
+====================================================
+DELIVERABLES
+====================================================
+
+Implement:
+- upgraded posture detection
+- state machine engine
+- confidence scoring
+- invalid posture alerts
+- adhan system
+- settings integration
+
+Then explain:
+- what was added
+- what files were modified
+- how detection accuracy was improved
+- how false positives were reduced
+- how the adhan scheduling works
+
+Do NOT rebuild the app.
+Do NOT remove existing functionality.
+Extend safely and incrementally only.
