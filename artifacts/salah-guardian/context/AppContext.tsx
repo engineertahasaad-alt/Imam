@@ -36,6 +36,7 @@ import {
   requestNotificationPermissions,
   scheduleAllPrayerReminders,
 } from "@/lib/notifications";
+import { scheduleAdhanNotifications } from "@/lib/adhanEngine";
 
 export interface PrayerStatus {
   name: string;
@@ -107,6 +108,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     sensitivity: 3,
     prayerTimeOffsetMinutes: 0,
     vibrationStrength: "high",
+    adhanEnabled: false,
+    adhanVoice: "alafasy",
+    adhanVolume: 0.8,
+    invalidPostureAlerts: true,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [todayTimes, setTodayTimes] = useState<PrayerTimes | null>(null);
@@ -154,7 +159,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           s.longitude,
           s.calculationMethod as CalculationMethod,
           s.reminderOffsetMinutes,
-          s.notificationsEnabled
+          s.notificationsEnabled,
+          s.adhanEnabled,
+          s.adhanVoice,
         );
         setTodayTimes(times);
         const info = getCurrentAndNextPrayer(times);
@@ -183,21 +190,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     lng: number,
     method: CalculationMethod,
     reminderOffset: number,
-    notificationsEnabled: boolean
+    notificationsEnabled: boolean,
+    adhanEnabled = false,
+    adhanVoice   = "alafasy",
   ): PrayerTimes {
     const times = calculatePrayerTimes(lat, lng, new Date(), method);
 
     if (Platform.OS !== "web" && notificationsEnabled) {
-      scheduleAllPrayerReminders(
-        {
-          Fajr: times.fajr,
-          Dhuhr: times.dhuhr,
-          Asr: times.asr,
-          Maghrib: times.maghrib,
-          Isha: times.isha,
-        },
-        reminderOffset
-      ).catch(() => {});
+      const prayerMap = {
+        Fajr: times.fajr, Dhuhr: times.dhuhr, Asr: times.asr,
+        Maghrib: times.maghrib, Isha: times.isha,
+      };
+      scheduleAllPrayerReminders(prayerMap, reminderOffset).catch(() => {});
+      scheduleAdhanNotifications(prayerMap, adhanVoice as any, adhanEnabled).catch(() => {});
     }
 
     return times;
@@ -244,7 +249,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         settings.longitude,
         settings.calculationMethod as CalculationMethod,
         settings.reminderOffsetMinutes,
-        settings.notificationsEnabled
+        settings.notificationsEnabled,
+        settings.adhanEnabled,
+        settings.adhanVoice,
       );
       setTodayTimes(times);
       refreshStatuses(times);
@@ -267,10 +274,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           updated.longitude,
           updated.calculationMethod as CalculationMethod,
           updated.reminderOffsetMinutes,
-          updated.notificationsEnabled
+          updated.notificationsEnabled,
+          updated.adhanEnabled,
+          updated.adhanVoice,
         );
         setTodayTimes(times);
         await refreshStatuses(times);
+      }
+    }
+
+    // Reschedule adhan when adhan-specific settings change (no full prayer-time recompute needed)
+    if (
+      (newSettings.adhanEnabled !== undefined || newSettings.adhanVoice !== undefined) &&
+      newSettings.latitude === undefined &&
+      newSettings.longitude === undefined &&
+      newSettings.calculationMethod === undefined
+    ) {
+      const t = todayTimesRef.current;
+      if (t && Platform.OS !== "web") {
+        scheduleAdhanNotifications(
+          { Fajr: t.fajr, Dhuhr: t.dhuhr, Asr: t.asr, Maghrib: t.maghrib, Isha: t.isha },
+          (updated.adhanVoice ?? "alafasy") as any,
+          updated.adhanEnabled ?? false
+        ).catch(() => {});
       }
     }
   }
@@ -345,7 +371,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       lng,
       newSettings.calculationMethod as CalculationMethod,
       newSettings.reminderOffsetMinutes,
-      newSettings.notificationsEnabled
+      newSettings.notificationsEnabled,
+      newSettings.adhanEnabled,
+      newSettings.adhanVoice,
     );
     setTodayTimes(times);
     await refreshStatuses(times);

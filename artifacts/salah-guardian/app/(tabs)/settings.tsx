@@ -19,6 +19,11 @@ import {
   CALCULATION_METHODS,
   CalculationMethod,
 } from "@/lib/prayerCalculator";
+import {
+  ADHAN_VOICE_LABELS,
+  testAdhanPreview,
+} from "@/lib/adhanEngine";
+import type { AdhanVoice } from "@/lib/storage";
 
 const REMINDER_OFFSET_OPTIONS = [0, 5, 10, 15, 20, 30];
 const TIME_OFFSET_OPTIONS = [-15, -10, -5, 0, 5, 10, 15];
@@ -60,6 +65,23 @@ export default function SettingsScreen() {
   }
   async function changePrayerTimeOffset(offset: number) {
     await updateSettings({ prayerTimeOffsetMinutes: offset });
+  }
+
+  const adhanEnabled  = settings.adhanEnabled  ?? false;
+  const adhanVoice    = (settings.adhanVoice   ?? "alafasy") as AdhanVoice;
+  const adhanVolume   = settings.adhanVolume   ?? 0.8;
+
+  async function changeAdhanEnabled(val: boolean) {
+    await updateSettings({ adhanEnabled: val });
+  }
+  async function changeAdhanVoice(voice: AdhanVoice) {
+    await updateSettings({ adhanVoice: voice });
+  }
+  async function changeAdhanVolume(vol: number) {
+    await updateSettings({ adhanVolume: vol });
+  }
+  async function handleTestAdhan() {
+    await testAdhanPreview(adhanVoice, adhanVolume);
   }
 
   function resetOnboarding() {
@@ -232,6 +254,92 @@ export default function SettingsScreen() {
               ))}
             </View>
           </View>
+        )}
+      </SettingsSection>
+
+      {/* ── Adhan ──────────────────────────────────────────────────────────── */}
+      <SettingsSection title="Adhan (Prayer Call)" colors={colors}>
+        <SettingsRow colors={colors}>
+          <Feather name="volume-2" size={18} color={colors.primary} />
+          <Text style={[styles.rowLabel, { color: colors.foreground }, { flex: 1 }]}>
+            Automatic Adhan
+          </Text>
+          <Switch
+            value={adhanEnabled}
+            onValueChange={changeAdhanEnabled}
+            trackColor={{ true: colors.primary, false: colors.border }}
+            thumbColor="#fff"
+          />
+        </SettingsRow>
+
+        {adhanEnabled && (
+          <>
+            <View style={styles.insetSection}>
+              <Text style={[styles.insetLabel, { color: colors.mutedForeground }]}>
+                Adhan Voice
+              </Text>
+              {(Object.entries(ADHAN_VOICE_LABELS) as [AdhanVoice, string][]).map(([key, label]) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[styles.methodItem, { backgroundColor: colors.card }]}
+                  onPress={() => changeAdhanVoice(key)}
+                >
+                  <View
+                    style={[
+                      styles.radioOuter,
+                      { borderColor: adhanVoice === key ? colors.primary : colors.border },
+                    ]}
+                  >
+                    {adhanVoice === key && (
+                      <View style={[styles.radioInner, { backgroundColor: colors.primary }]} />
+                    )}
+                  </View>
+                  <Text style={[styles.methodKey, { color: colors.foreground }]}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.insetSection}>
+              <Text style={[styles.insetLabel, { color: colors.mutedForeground }]}>
+                Volume
+              </Text>
+              <View style={styles.chipRow}>
+                {[0.2, 0.4, 0.6, 0.8, 1.0].map((vol) => (
+                  <TouchableOpacity
+                    key={vol}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: Math.abs(adhanVolume - vol) < 0.05 ? colors.primary : colors.secondary,
+                        borderColor:     Math.abs(adhanVolume - vol) < 0.05 ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => changeAdhanVolume(vol)}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        { color: Math.abs(adhanVolume - vol) < 0.05 ? colors.primaryForeground : colors.mutedForeground },
+                      ]}
+                    >
+                      {Math.round(vol * 100)}%
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={[styles.insetHint, { color: colors.mutedForeground }]}>
+                Requires network for in-app playback · Notifications work offline
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.calibrateBtn, { borderColor: colors.primary }]}
+              onPress={handleTestAdhan}
+            >
+              <Feather name="play" size={16} color={colors.primary} />
+              <Text style={[styles.calibrateBtnText, { color: colors.primary }]}>Test Adhan</Text>
+            </TouchableOpacity>
+          </>
         )}
       </SettingsSection>
 

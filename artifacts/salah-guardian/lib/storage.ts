@@ -8,6 +8,8 @@ export type CalculationMethodKey =
   | "Karachi"
   | "Gulf";
 
+export type AdhanVoice = "alafasy" | "abdulbasit" | "madinah" | "makkah";
+
 export interface AppSettings {
   hasCompletedOnboarding: boolean;
   calculationMethod: CalculationMethodKey;
@@ -25,6 +27,12 @@ export interface AppSettings {
   prayerTimeOffsetMinutes: number;
   /** Controls haptic pulse intensity/count */
   vibrationStrength: "low" | "medium" | "high";
+  /** Adhan feature */
+  adhanEnabled: boolean;
+  adhanVoice: AdhanVoice;
+  adhanVolume: number;
+  /** Invalid posture alerts */
+  invalidPostureAlerts: boolean;
 }
 
 export interface PrayerRecord {
@@ -67,6 +75,10 @@ function defaultSettings(): AppSettings {
     sensitivity: 3,
     prayerTimeOffsetMinutes: 0,
     vibrationStrength: "high",
+    adhanEnabled: false,
+    adhanVoice: "alafasy",
+    adhanVolume: 0.8,
+    invalidPostureAlerts: true,
   };
 }
 

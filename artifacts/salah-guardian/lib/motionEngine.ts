@@ -24,7 +24,8 @@ export interface DetectionEvent {
     | "RAKAH_COMPLETE"
     | "PRAYER_COMPLETE"
     | "ERROR"
-    | "STABILITY_UPDATE";
+    | "STABILITY_UPDATE"
+    | "INVALID_SEQUENCE";
   position?:             BodyPosition;
   expectedPosition?:     BodyPosition;
   nextExpectedPosition?: BodyPosition;
@@ -82,6 +83,18 @@ const HPA_TO_M               = 8.43;
 const WRONG_REPEAT_MS        = 2_000;
 /** How often holdProgress is updated during the hold countdown */
 const HOLD_PROGRESS_TICK_MS  = 100;
+/** FSM-context confidence boost when detected position = expected next transition */
+const FSM_CONTEXT_BOOST      = 0.12;
+/** FSM-context confidence penalty when position would skip required FSM steps */
+const FSM_CONTEXT_PENALTY    = 0.45;
+/** Rolling window size for gyroscope velocity averaging */
+const GYRO_VEL_WINDOW        = 6;
+/** Average gyro magnitude above which we classify the phone as mid-transition */
+const TRANSITION_GYRO_GATE   = 0.68;
+/** Minimum ms a position must be stable before a position-change is accepted */
+const MIN_POSTURE_HOLD_MS    = 500;
+/** An invalid sequence must persist this long before an alert event fires */
+const INVALID_SEQ_VALIDATE_MS = 1_800;
 // ─────────────────────────────────────────────────────────────────────────────
 
 function clamp(v: number, lo: number, hi: number) {
@@ -163,6 +176,15 @@ export class MotionEngine {
 
   // ── Throttle ────────────────────────────────────────────────────────────
   private lastStabilityEmit = 0;
+
+  // ── Velocity window (gyro rolling average for transition filtering) ───────
+  private gyroVelBuffer: number[] = [];
+
+  // ── Invalid-sequence detection ────────────────────────────────────────────
+  private invalidSeqTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // ── FSM history (for context-aware confidence) ───────────────────────────
+  private previousFsmState: FSMState = "IDLE";
 
   // ── Callback ─────────────────────────────────────────────────────────────
   private onEvent: ((event: DetectionEvent) => void) | null = null;
@@ -284,6 +306,7 @@ export class MotionEngine {
     if (this.recordingTimer)       { clearTimeout(this.recordingTimer);         this.recordingTimer       = null; }
     this.clearWrongTimer();
     this.clearCorrectHold();
+    this.clearInvalidSeqTimer();
   }
 
   private clearWrongTimer() {
@@ -294,6 +317,45 @@ export class MotionEngine {
     if (this.correctHoldTimer)     { clearTimeout(this.correctHoldTimer);      this.correctHoldTimer     = null; }
     if (this.correctHoldTickTimer) { clearInterval(this.correctHoldTickTimer); this.correctHoldTickTimer = null; }
     this.pendingCorrectPos = null;
+  }
+
+  private clearInvalidSeqTimer() {
+    if (this.invalidSeqTimer) { clearTimeout(this.invalidSeqTimer); this.invalidSeqTimer = null; }
+  }
+
+  /**
+   * Returns true if detecting `pos` from the current FSM state would skip required steps.
+   * Example: STANDING → SUJOOD is a skip (RUKU must come first).
+   */
+  private isSkipTransition(pos: BodyPosition): boolean {
+    switch (this.fsmState) {
+      case "STANDING":        return pos === "SUJOOD" || pos === "SITTING";
+      case "RUKU":            return pos === "SITTING";
+      case "STANDING_RETURN": return pos === "RUKU";   // going backward
+      case "SUJOOD_1":        return pos === "RUKU";
+      default:                return false;
+    }
+  }
+
+  /**
+   * Schedule an invalid-sequence alert after a validation window.
+   * Only fires if the user is still in the invalid position when the timer expires.
+   */
+  private scheduleInvalidSeqAlert(pos: BodyPosition, expected: BodyPosition, confidence: number) {
+    if (this.invalidSeqTimer) return; // already pending
+    this.invalidSeqTimer = setTimeout(() => {
+      this.invalidSeqTimer = null;
+      if (this.currentPosition !== pos || this.fsmState === "IDLE") return;
+      this.onEvent?.({
+        type:             "INVALID_SEQUENCE",
+        position:         pos,
+        expectedPosition: expected,
+        confidence,
+        fsmState:         this.fsmState,
+        timestamp:        Date.now(),
+        message: `${this.getPositionLabel(pos)} detected — expected ${this.getPositionLabel(expected)}`,
+      });
+    }, INVALID_SEQ_VALIDATE_MS);
   }
 
   private startStuckGuard() {
@@ -380,9 +442,24 @@ export class MotionEngine {
     const [bestPos, bestSim] = entries[0];
     const [, secondSim]      = entries[1];
     const margin      = bestSim - secondSim;
-    const simFactor   = clamp((bestSim - this.adaptedThreshold) / (1 - this.adaptedThreshold), 0, 1);
+    const simFactor    = clamp((bestSim - this.adaptedThreshold) / (1 - this.adaptedThreshold), 0, 1);
     const marginFactor = clamp(margin / 0.20, 0, 1);
-    const confidence  = 0.50 * simFactor + 0.25 * marginFactor + 0.15 * magHealth + 0.10 * this.stability;
+
+    // ── FSM-context bias ─────────────────────────────────────────────────────
+    // Boost the expected next transition; penalize out-of-sequence positions.
+    const nextExp = this.getNextExpectedPosition();
+    let fsmAdj = 0;
+    if (bestPos !== "UNKNOWN") {
+      if (bestPos === nextExp) {
+        // Approaching the expected next step → small confidence boost
+        fsmAdj = FSM_CONTEXT_BOOST;
+      } else if (this.isSkipTransition(bestPos as BodyPosition)) {
+        // Detected a position that skips required steps → confidence penalty
+        fsmAdj = -FSM_CONTEXT_PENALTY;
+      }
+    }
+
+    const confidence = 0.48 * simFactor + 0.22 * marginFactor + 0.15 * magHealth + 0.10 * this.stability + fsmAdj;
     if (bestSim < this.adaptedThreshold) return { position: "UNKNOWN", confidence: 0 };
     return { position: bestPos as BodyPosition, confidence: clamp(confidence, 0, 1) };
   }
@@ -468,8 +545,15 @@ export class MotionEngine {
   private processSample() {
     if (this.fsmState === "IDLE") return;
 
+    // ── Velocity buffer: rolling average of gyro magnitude ──────────────────
+    // Using an averaged window instead of instantaneous magnitude removes
+    // brief spike false-positives (pocket bumps, hand touches).
     const gyroMag = mag3(this.wx, this.wy, this.wz);
-    if (gyroMag > GYRO_STABLE_THRESHOLD * 2.5) {
+    this.gyroVelBuffer.push(gyroMag);
+    if (this.gyroVelBuffer.length > GYRO_VEL_WINDOW) this.gyroVelBuffer.shift();
+    const avgGyroVel = this.gyroVelBuffer.reduce((a, b) => a + b, 0) / this.gyroVelBuffer.length;
+
+    if (avgGyroVel > TRANSITION_GYRO_GATE) {
       this.window.push("UNKNOWN");
       if (this.window.length > WINDOW_SIZE) this.window.shift();
       return;
@@ -524,9 +608,10 @@ export class MotionEngine {
     if (winnerPos !== this.currentPosition && sinceLastChange < this.minPositionHoldMs) return;
 
     if (winnerPos === this.currentPosition) {
-      // Position unchanged — if we had a wrong timer and position now matches expected, cancel wrong
+      // Position unchanged — cancel wrong / invalid-seq timers if now matching expected
       if (this.wrongRepeatTimer && (winnerPos === this.getExpectedPosition() || this.wouldAdvanceFSM(winnerPos))) {
         this.clearWrongTimer();
+        this.clearInvalidSeqTimer();
       }
       return;
     }
@@ -540,17 +625,18 @@ export class MotionEngine {
       this.clearCorrectHold();
     }
 
-    // Cancel wrong timer (will restart below if still wrong)
+    // Cancel wrong / invalid-sequence timers (will restart below if still wrong)
     this.clearWrongTimer();
+    this.clearInvalidSeqTimer();
 
     const expected = this.getExpectedPosition();
     const nextExp  = this.getNextExpectedPosition();
 
     if (this.wouldAdvanceFSM(winnerPos)) {
-      // ── Correct transition position → start 3-second confirmation hold ──
+      // ── Correct transition → start confirmation hold ─────────────────────
       this.startCorrectHold(winnerPos, expected, nextExp, avgConf, now);
     } else if (winnerPos === expected) {
-      // ── In the correct static position (e.g., standing while in STANDING state) ──
+      // ── Holding correct static position ──────────────────────────────────
       this.onEvent?.({
         type:                  "POSTURE_VALIDATION",
         position:              winnerPos,
@@ -564,9 +650,16 @@ export class MotionEngine {
         timestamp:             now,
       });
     } else {
-      // ── Wrong position → vibrate continuously ───────────────────────────
+      // ── Wrong position → vibrate continuously ─────────────────────────────
       this.fireWrong(winnerPos, expected, nextExp, avgConf, now);
       this.scheduleWrongRepeat(winnerPos, expected, nextExp, avgConf);
+
+      // Schedule an invalid-sequence alert for confirmed positional skips
+      // (e.g., STANDING → SUJOOD without doing RUKU). Only fires after the
+      // user holds the invalid position for INVALID_SEQ_VALIDATE_MS.
+      if (this.isSkipTransition(winnerPos) && avgConf > 0.65) {
+        this.scheduleInvalidSeqAlert(winnerPos, expected, avgConf);
+      }
     }
   }
 
@@ -701,6 +794,7 @@ export class MotionEngine {
   // ── Finite State Machine ──────────────────────────────────────────────────
 
   private transitionFSM(newState: FSMState) {
+    this.previousFsmState  = this.fsmState;
     this.fsmState          = newState;
     this.fsmStateEnteredAt = Date.now();
   }

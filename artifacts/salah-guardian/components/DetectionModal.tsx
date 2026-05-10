@@ -231,6 +231,15 @@ export function DetectionModal({
         vibrateRakaatComplete(vibrationEnabled);
       }
 
+      // ── Invalid-sequence alert (confirmed positional skip) ────────────────
+      // Fires after INVALID_SEQ_VALIDATE_MS of holding an out-of-order position
+      if (event.type === "INVALID_SEQUENCE") {
+        vibrateWrong(vibrationEnabled, vibrationStrength);
+        if (event.message) {
+          setEvents((prev) => [`⚠️ ${event.message}`, ...prev.slice(0, 3)]);
+        }
+      }
+
     }, sensitivity);
 
     if (calibration) {
