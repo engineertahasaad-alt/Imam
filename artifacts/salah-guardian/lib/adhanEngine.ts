@@ -11,18 +11,26 @@ export const ADHAN_VOICE_LABELS: Record<AdhanVoice, string> = {
   abdulbasit: "Abdul Basit Abd us-Samad",
   madinah:    "Madinah (Al-Masjid An-Nabawi)",
   makkah:     "Makkah (Al-Masjid Al-Haram)",
+  sudais:     "Abdur-Rahman As-Sudais",
+  sghamdi:    "Saad Al-Ghamdi",
+  haifa:      "Egyptian Traditional",
+  turkey:     "Turkish Traditional",
 };
 
 /**
- * Remote adhan audio URLs used for in-app foreground playback.
- * For a fully offline native build, replace these with:
- *   require("../assets/audio/adhan_alafasy.mp3")  etc.
+ * Remote adhan audio URLs (islamcan.com CDN).
+ * For a fully offline native build, replace with:
+ *   require("../assets/audio/adhan_alafasy.mp3") etc.
  */
 const ADHAN_REMOTE_URLS: Record<AdhanVoice, string> = {
   alafasy:    "https://www.islamcan.com/audio/adhan/azan1.mp3",
   abdulbasit: "https://www.islamcan.com/audio/adhan/azan2.mp3",
   madinah:    "https://www.islamcan.com/audio/adhan/azan3.mp3",
   makkah:     "https://www.islamcan.com/audio/adhan/azan4.mp3",
+  sudais:     "https://www.islamcan.com/audio/adhan/azan5.mp3",
+  sghamdi:    "https://www.islamcan.com/audio/adhan/azan6.mp3",
+  haifa:      "https://www.islamcan.com/audio/adhan/azan7.mp3",
+  turkey:     "https://www.islamcan.com/audio/adhan/azan8.mp3",
 };
 
 const PRAYER_ORDER = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"] as const;

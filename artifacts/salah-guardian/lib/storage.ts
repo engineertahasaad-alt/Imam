@@ -8,7 +8,15 @@ export type CalculationMethodKey =
   | "Karachi"
   | "Gulf";
 
-export type AdhanVoice = "alafasy" | "abdulbasit" | "madinah" | "makkah";
+export type AdhanVoice =
+  | "alafasy"
+  | "abdulbasit"
+  | "madinah"
+  | "makkah"
+  | "sudais"
+  | "sghamdi"
+  | "haifa"
+  | "turkey";
 
 export interface AppSettings {
   hasCompletedOnboarding: boolean;
@@ -33,6 +41,8 @@ export interface AppSettings {
   adhanVolume: number;
   /** Invalid posture alerts */
   invalidPostureAlerts: boolean;
+  /** User's preferred name for personalized greeting */
+  userName?: string;
 }
 
 export interface PrayerRecord {

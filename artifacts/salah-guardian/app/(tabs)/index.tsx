@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CelebrationBanner } from "@/components/CelebrationBanner";
 import { DetectionModal } from "@/components/DetectionModal";
 import { NextPrayerCard } from "@/components/NextPrayerCard";
 import { PrayerAlertBanner } from "@/components/PrayerAlertBanner";
@@ -85,6 +86,7 @@ export default function HomeScreen() {
   const vibrationEnabled  = settings?.vibrationEnabled  ?? true;
   const vibrationStrength = settings?.vibrationStrength ?? "high";
   const sensitivity       = settings?.sensitivity       ?? 3;
+  const userName          = settings?.userName;
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -130,6 +132,31 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
         }
       >
+        {/* Personalized greeting */}
+        <View style={styles.greetingRow}>
+          <View>
+            <Text style={[styles.greetingMain, { color: colors.foreground }]}>
+              {userName ? `Assalamu Alaikum, ${userName}` : "Assalamu Alaikum"} 👋
+            </Text>
+            <Text style={[styles.greetingSub, { color: colors.mutedForeground }]}>
+              May your prayers be accepted
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.settingsBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => router.push("/(tabs)/settings")}
+          >
+            <Feather name="settings" size={18} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+
+        {/* All-5-prayers celebration */}
+        <CelebrationBanner
+          visible={todayDetectedCount === 5}
+          userName={userName}
+          streak={streak}
+        />
+
         {/* Next prayer countdown */}
         <NextPrayerCard
           nextPrayer={nextPrayer}
@@ -242,6 +269,16 @@ const styles = StyleSheet.create({
   loadingText: { fontSize: 15 },
 
   container: { paddingHorizontal: 20, gap: 16 },
+
+  greetingRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+  },
+  greetingMain: { fontSize: 17, fontWeight: "700", letterSpacing: -0.3 },
+  greetingSub:  { fontSize: 12, marginTop: 2 },
+  settingsBtn:  {
+    width: 38, height: 38, borderRadius: 19, borderWidth: 1,
+    alignItems: "center", justifyContent: "center",
+  },
   section: { gap: 8 },
   sectionTitle: { fontSize: 11, fontWeight: "600", letterSpacing: 0.8, paddingLeft: 4 },
 

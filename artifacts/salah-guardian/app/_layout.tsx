@@ -9,13 +9,22 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
-import { Platform } from "react-native";
+import { LogBox, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/context/AppContext";
+
+// Suppress Expo Go SDK 53+ push notification console overlay.
+// Remote push notifications are unavailable in Expo Go; local scheduled
+// notifications still work correctly in development builds and production.
+LogBox.ignoreLogs([
+  "expo-notifications: Android Push notifications",
+  "[expo-notifications]",
+  "expo-notifications",
+]);
 
 SplashScreen.preventAutoHideAsync();
 
@@ -39,8 +48,6 @@ export default function RootLayout() {
     Inter_700Bold,
   });
 
-  // On web, fonts load asynchronously via CSS and never block rendering.
-  // Give native a short grace period before rendering without custom fonts.
   const [ready, setReady] = useState(Platform.OS === "web");
   useEffect(() => {
     const t = setTimeout(() => setReady(true), 2000);

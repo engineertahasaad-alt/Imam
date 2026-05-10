@@ -27,29 +27,34 @@ const METHODS = Object.entries(CALCULATION_METHODS).map(([key, val]) => ({
   name: val.name,
 }));
 
-// Common cities for quick select
 const PRESET_CITIES = [
-  { name: "Makkah", lat: 21.3891, lng: 39.8579 },
-  { name: "Madinah", lat: 24.5247, lng: 39.5692 },
-  { name: "Cairo", lat: 30.0444, lng: 31.2357 },
-  { name: "Dubai", lat: 25.2048, lng: 55.2708 },
-  { name: "London", lat: 51.5074, lng: -0.1278 },
+  { name: "Makkah",   lat: 21.3891, lng: 39.8579 },
+  { name: "Madinah",  lat: 24.5247, lng: 39.5692 },
+  { name: "Cairo",    lat: 30.0444, lng: 31.2357 },
+  { name: "Dubai",    lat: 25.2048, lng: 55.2708 },
+  { name: "London",   lat: 51.5074, lng: -0.1278 },
   { name: "New York", lat: 40.7128, lng: -74.006 },
-  { name: "Karachi", lat: 24.8607, lng: 67.0011 },
+  { name: "Karachi",  lat: 24.8607, lng: 67.0011 },
   { name: "Istanbul", lat: 41.0082, lng: 28.9784 },
 ];
 
+type Step = "name" | "location" | "method";
+
 export default function SetupScreen() {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
+  const colors  = useColors();
+  const insets  = useSafeAreaInsets();
   const { updateSettings } = useApp();
 
+  const [step,           setStep]           = useState<Step>("name");
+  const [userName,       setUserName]       = useState("");
   const [selectedMethod, setSelectedMethod] = useState<CalculationMethod>("MWL");
-  const [lat, setLat] = useState<number | null>(null);
-  const [lng, setLng] = useState<number | null>(null);
-  const [cityName, setCityName] = useState("");
-  const [loadingGPS, setLoadingGPS] = useState(false);
-  const [step, setStep] = useState<"location" | "method">("location");
+  const [lat,            setLat]            = useState<number | null>(null);
+  const [lng,            setLng]            = useState<number | null>(null);
+  const [cityName,       setCityName]       = useState("");
+  const [loadingGPS,     setLoadingGPS]     = useState(false);
+
+  const STEPS: Step[] = ["name", "location", "method"];
+  const stepIdx = STEPS.indexOf(step);
 
   async function useGPS() {
     if (Platform.OS === "web") {
@@ -60,7 +65,7 @@ export default function SetupScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission denied", "Please allow location access to get accurate prayer times.");
+        Alert.alert("Permission denied", "Please allow location access for accurate prayer times.");
         return;
       }
       const loc = await Location.getCurrentPositionAsync({
@@ -70,7 +75,7 @@ export default function SetupScreen() {
       setLng(loc.coords.longitude);
       setCityName("Current Location");
       setStep("method");
-    } catch (e) {
+    } catch {
       Alert.alert("Error", "Could not get location. Please select a city.");
     } finally {
       setLoadingGPS(false);
@@ -88,9 +93,10 @@ export default function SetupScreen() {
     if (!lat || !lng) return;
     await updateSettings({
       calculationMethod: selectedMethod,
-      latitude: lat,
+      latitude:  lat,
       longitude: lng,
       cityName,
+      userName: userName.trim() || undefined,
     });
     router.push("/onboarding/calibration");
   }
@@ -101,41 +107,77 @@ export default function SetupScreen() {
       contentContainerStyle={[
         styles.container,
         {
-          paddingTop: insets.top + (Platform.OS === "web" ? 67 : 20),
+          paddingTop:    insets.top + (Platform.OS === "web" ? 67 : 20),
           paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 32),
         },
       ]}
       showsVerticalScrollIndicator={false}
     >
-      {/* Step indicator */}
+      {/* Step indicator — 3 steps */}
       <View style={styles.stepIndicator}>
-        <View
-          style={[
-            styles.stepDot,
-            { backgroundColor: colors.primary },
-          ]}
-        />
-        <View
-          style={[
-            styles.stepLine,
-            {
-              backgroundColor:
-                step === "method" ? colors.primary : colors.border,
-            },
-          ]}
-        />
-        <View
-          style={[
-            styles.stepDot,
-            {
-              backgroundColor:
-                step === "method" ? colors.primary : colors.border,
-            },
-          ]}
-        />
+        {STEPS.map((s, i) => (
+          <React.Fragment key={s}>
+            <View
+              style={[
+                styles.stepDot,
+                { backgroundColor: i <= stepIdx ? colors.primary : colors.border },
+              ]}
+            />
+            {i < STEPS.length - 1 && (
+              <View
+                style={[
+                  styles.stepLine,
+                  { backgroundColor: i < stepIdx ? colors.primary : colors.border },
+                ]}
+              />
+            )}
+          </React.Fragment>
+        ))}
       </View>
 
-      {step === "location" ? (
+      {/* ── Step 1: Name ───────────────────────────────────────────────────── */}
+      {step === "name" && (
+        <>
+          <Text style={[styles.heading, { color: colors.foreground }]}>
+            Assalamu Alaikum! 👋
+          </Text>
+          <Text style={[styles.subheading, { color: colors.mutedForeground }]}>
+            What should we call you? (optional)
+          </Text>
+
+          <TextInput
+            style={[
+              styles.nameInput,
+              {
+                backgroundColor: colors.card,
+                borderColor:     colors.border,
+                color:           colors.foreground,
+              },
+            ]}
+            placeholder="Your name or nickname"
+            placeholderTextColor={colors.mutedForeground}
+            value={userName}
+            onChangeText={setUserName}
+            autoFocus
+            autoCapitalize="words"
+            returnKeyType="next"
+            onSubmitEditing={() => setStep("location")}
+          />
+
+          <TouchableOpacity
+            style={[styles.nextBtn, { backgroundColor: colors.primary }]}
+            onPress={() => setStep("location")}
+          >
+            <Text style={[styles.nextBtnText, { color: colors.primaryForeground }]}>
+              {userName.trim() ? "Continue" : "Skip"}
+            </Text>
+            <Feather name="arrow-right" size={20} color={colors.primaryForeground} />
+          </TouchableOpacity>
+        </>
+      )}
+
+      {/* ── Step 2: Location ──────────────────────────────────────────────── */}
+      {step === "location" && (
         <>
           <Text style={[styles.heading, { color: colors.foreground }]}>
             Set Your Location
@@ -144,7 +186,6 @@ export default function SetupScreen() {
             Needed for accurate prayer times
           </Text>
 
-          {/* GPS button */}
           <TouchableOpacity
             style={[styles.gpsBtn, { backgroundColor: colors.primary }]}
             onPress={useGPS}
@@ -155,10 +196,8 @@ export default function SetupScreen() {
             ) : (
               <Feather name="map-pin" size={20} color={colors.primaryForeground} />
             )}
-            <Text
-              style={[styles.gpsBtnText, { color: colors.primaryForeground }]}
-            >
-              {loadingGPS ? "Getting location..." : "Use GPS"}
+            <Text style={[styles.gpsBtnText, { color: colors.primaryForeground }]}>
+              {loadingGPS ? "Getting location…" : "Use GPS"}
             </Text>
           </TouchableOpacity>
 
@@ -166,7 +205,6 @@ export default function SetupScreen() {
             or select a city
           </Text>
 
-          {/* City grid */}
           <View style={styles.cityGrid}>
             {PRESET_CITIES.map((city) => (
               <TouchableOpacity
@@ -174,14 +212,8 @@ export default function SetupScreen() {
                 style={[
                   styles.cityChip,
                   {
-                    backgroundColor:
-                      cityName === city.name
-                        ? colors.primary
-                        : colors.card,
-                    borderColor:
-                      cityName === city.name
-                        ? colors.primary
-                        : colors.border,
+                    backgroundColor: cityName === city.name ? colors.primary : colors.card,
+                    borderColor:     cityName === city.name ? colors.primary : colors.border,
                   },
                 ]}
                 onPress={() => selectCity(city)}
@@ -189,12 +221,7 @@ export default function SetupScreen() {
                 <Text
                   style={[
                     styles.cityChipText,
-                    {
-                      color:
-                        cityName === city.name
-                          ? colors.primaryForeground
-                          : colors.foreground,
-                    },
+                    { color: cityName === city.name ? colors.primaryForeground : colors.foreground },
                   ]}
                 >
                   {city.name}
@@ -203,7 +230,10 @@ export default function SetupScreen() {
             ))}
           </View>
         </>
-      ) : (
+      )}
+
+      {/* ── Step 3: Method ────────────────────────────────────────────────── */}
+      {step === "method" && (
         <>
           <View style={styles.locationConfirm}>
             <Feather name="map-pin" size={16} color={colors.primary} />
@@ -232,10 +262,7 @@ export default function SetupScreen() {
                   styles.methodItem,
                   {
                     backgroundColor: colors.card,
-                    borderColor:
-                      selectedMethod === m.key
-                        ? colors.primary
-                        : colors.border,
+                    borderColor:     selectedMethod === m.key ? colors.primary : colors.border,
                   },
                 ]}
                 onPress={() => setSelectedMethod(m.key)}
@@ -243,43 +270,23 @@ export default function SetupScreen() {
                 <View
                   style={[
                     styles.radio,
-                    {
-                      borderColor:
-                        selectedMethod === m.key
-                          ? colors.primary
-                          : colors.border,
-                    },
+                    { borderColor: selectedMethod === m.key ? colors.primary : colors.border },
                   ]}
                 >
                   {selectedMethod === m.key && (
-                    <View
-                      style={[
-                        styles.radioFill,
-                        { backgroundColor: colors.primary },
-                      ]}
-                    />
+                    <View style={[styles.radioFill, { backgroundColor: colors.primary }]} />
                   )}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text
                     style={[
                       styles.methodName,
-                      {
-                        color:
-                          selectedMethod === m.key
-                            ? colors.primary
-                            : colors.foreground,
-                      },
+                      { color: selectedMethod === m.key ? colors.primary : colors.foreground },
                     ]}
                   >
                     {m.key}
                   </Text>
-                  <Text
-                    style={[
-                      styles.methodDesc,
-                      { color: colors.mutedForeground },
-                    ]}
-                  >
+                  <Text style={[styles.methodDesc, { color: colors.mutedForeground }]}>
                     {m.name}
                   </Text>
                 </View>
@@ -291,16 +298,10 @@ export default function SetupScreen() {
             style={[styles.nextBtn, { backgroundColor: colors.primary }]}
             onPress={finishSetup}
           >
-            <Text
-              style={[styles.nextBtnText, { color: colors.primaryForeground }]}
-            >
+            <Text style={[styles.nextBtnText, { color: colors.primaryForeground }]}>
               Continue
             </Text>
-            <Feather
-              name="arrow-right"
-              size={20}
-              color={colors.primaryForeground}
-            />
+            <Feather name="arrow-right" size={20} color={colors.primaryForeground} />
           </TouchableOpacity>
         </>
       )}
@@ -309,124 +310,72 @@ export default function SetupScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 24,
-    gap: 16,
-  },
+  container: { paddingHorizontal: 24, gap: 16 },
+
   stepIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "center",
-    gap: 0,
-    marginBottom: 8,
+    flexDirection:  "row",
+    alignItems:     "center",
+    alignSelf:      "center",
+    gap:            0,
+    marginBottom:   8,
   },
-  stepDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  stepLine: {
-    width: 60,
-    height: 2,
-  },
-  heading: {
-    fontSize: 26,
-    fontWeight: "700",
-    letterSpacing: -0.5,
-  },
-  subheading: {
-    fontSize: 14,
-    marginTop: -8,
-  },
-  gpsBtn: {
-    borderRadius: 14,
-    paddingVertical: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    marginTop: 4,
-  },
-  gpsBtnText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  orText: {
-    textAlign: "center",
-    fontSize: 13,
-  },
-  cityGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  cityChip: {
-    borderRadius: 20,
-    borderWidth: 1,
+  stepDot:  { width: 10, height: 10, borderRadius: 5 },
+  stepLine: { width: 48, height: 2 },
+
+  heading:    { fontSize: 26, fontWeight: "700", letterSpacing: -0.5 },
+  subheading: { fontSize: 14, marginTop: -8 },
+
+  nameInput: {
+    borderRadius:   14,
+    borderWidth:    1,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical:   14,
+    fontSize:       17,
+    marginTop:      4,
   },
-  cityChipText: {
-    fontSize: 14,
-    fontWeight: "500",
+
+  gpsBtn: {
+    borderRadius:    14,
+    paddingVertical: 16,
+    flexDirection:   "row",
+    alignItems:      "center",
+    justifyContent:  "center",
+    gap:             10,
+    marginTop:       4,
   },
-  locationConfirm: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 4,
-  },
-  locationText: {
-    fontSize: 14,
-    fontWeight: "600",
-    flex: 1,
-  },
-  changeText: {
-    fontSize: 13,
-  },
-  methodList: {
-    gap: 8,
-  },
+  gpsBtnText: { fontSize: 16, fontWeight: "600" },
+
+  orText: { textAlign: "center", fontSize: 13 },
+
+  cityGrid:     { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  cityChip:     { borderRadius: 20, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 8 },
+  cityChipText: { fontSize: 14, fontWeight: "500" },
+
+  locationConfirm: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
+  locationText:    { fontSize: 14, fontWeight: "600", flex: 1 },
+  changeText:      { fontSize: 13 },
+
+  methodList: { gap: 8 },
   methodItem: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+    borderRadius: 12, borderWidth: 1, padding: 14,
+    flexDirection: "row", alignItems: "center", gap: 12,
   },
   radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
+    width: 20, height: 20, borderRadius: 10, borderWidth: 2,
+    alignItems: "center", justifyContent: "center",
   },
-  radioFill: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  methodName: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  methodDesc: {
-    fontSize: 11,
-    marginTop: 2,
-  },
+  radioFill:  { width: 10, height: 10, borderRadius: 5 },
+  methodName: { fontSize: 14, fontWeight: "600" },
+  methodDesc: { fontSize: 11, marginTop: 2 },
+
   nextBtn: {
-    borderRadius: 16,
+    borderRadius:    16,
     paddingVertical: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    marginTop: 8,
+    flexDirection:   "row",
+    alignItems:      "center",
+    justifyContent:  "center",
+    gap:             10,
+    marginTop:       8,
   },
-  nextBtnText: {
-    fontSize: 17,
-    fontWeight: "700",
-  },
+  nextBtnText: { fontSize: 17, fontWeight: "700" },
 });

@@ -112,6 +112,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     adhanVoice: "alafasy",
     adhanVolume: 0.8,
     invalidPostureAlerts: true,
+    userName: undefined,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [todayTimes, setTodayTimes] = useState<PrayerTimes | null>(null);

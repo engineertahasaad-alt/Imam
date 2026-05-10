@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -16,13 +17,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import {
-  CALCULATION_METHODS,
-  CalculationMethod,
-} from "@/lib/prayerCalculator";
-import {
   ADHAN_VOICE_LABELS,
   testAdhanPreview,
 } from "@/lib/adhanEngine";
+import {
+  CALCULATION_METHODS,
+  CalculationMethod,
+} from "@/lib/prayerCalculator";
 import type { AdhanVoice } from "@/lib/storage";
 
 const REMINDER_OFFSET_OPTIONS = [0, 5, 10, 15, 20, 30];
@@ -50,6 +51,7 @@ export default function SettingsScreen() {
   const sensitivity       = settings.sensitivity       ?? 3;
   const vibrationStrength = settings.vibrationStrength ?? "high";
   const prayerOffset      = settings.prayerTimeOffsetMinutes ?? 0;
+  const [nameInput, setNameInput] = React.useState(settings.userName ?? "");
 
   async function changeMethod(method: CalculationMethod) {
     await updateSettings({ calculationMethod: method });
@@ -115,6 +117,28 @@ export default function SettingsScreen() {
       showsVerticalScrollIndicator={false}
     >
       <Text style={[styles.title, { color: colors.foreground }]}>Settings</Text>
+
+      {/* ── Profile ───────────────────────────────────────────────────────── */}
+      <SettingsSection title="Profile" colors={colors}>
+        <SettingsRow colors={colors}>
+          <Feather name="user" size={18} color={colors.primary} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.rowLabel, { color: colors.foreground }]}>Your Name</Text>
+            <TextInput
+              style={[styles.nameField, { color: colors.foreground, borderColor: colors.border }]}
+              value={nameInput}
+              onChangeText={setNameInput}
+              placeholder="Enter your name (optional)"
+              placeholderTextColor={colors.mutedForeground}
+              autoCapitalize="words"
+              returnKeyType="done"
+              onEndEditing={() =>
+                updateSettings({ userName: nameInput.trim() || undefined })
+              }
+            />
+          </View>
+        </SettingsRow>
+      </SettingsSection>
 
       {/* ── Location ──────────────────────────────────────────────────────── */}
       <SettingsSection title="Location" colors={colors}>
@@ -597,6 +621,10 @@ const styles = StyleSheet.create({
   container:    { paddingHorizontal: 20, gap: 20 },
   title:        { fontSize: 26, fontWeight: "700" },
   rowLabel:     { fontSize: 15, fontWeight: "500" },
+  nameField:    {
+    fontSize: 14, marginTop: 6, borderWidth: 1, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
   rowValue:     { fontSize: 12, marginTop: 2 },
   changeBtn:    { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
   changeBtnText:{ fontSize: 13, fontWeight: "500" },
