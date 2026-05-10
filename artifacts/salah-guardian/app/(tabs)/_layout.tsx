@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
 import React from "react";
@@ -10,20 +10,20 @@ export default function TabLayout() {
   const colors = useColors();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
-  const isIOS = Platform.OS === "ios";
-  const isWeb = Platform.OS === "web";
+  const isIOS  = Platform.OS === "ios";
+  const isWeb  = Platform.OS === "web";
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor:   colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: false,
         tabBarStyle: {
-          position: "absolute",
+          position:        "absolute",
           backgroundColor: isIOS ? "transparent" : colors.background,
-          borderTopWidth: StyleSheet.hairlineWidth,
-          borderTopColor: colors.border,
+          borderTopWidth:  StyleSheet.hairlineWidth,
+          borderTopColor:  colors.border,
           elevation: 0,
           height: isWeb ? 84 : 60,
         },
@@ -36,10 +36,7 @@ export default function TabLayout() {
             />
           ) : isWeb ? (
             <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: colors.background },
-              ]}
+              style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
             />
           ) : null,
         tabBarLabelStyle: {
@@ -52,17 +49,17 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color }) => (
-            <Feather name="home" size={22} color={color} />
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="mosque" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="log"
         options={{
-          title: "Log",
-          tabBarIcon: ({ color }) => (
-            <Feather name="list" size={22} color={color} />
+          title: "Prayer Log",
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="calendar-check" size={size} color={color} />
           ),
         }}
       />
@@ -70,8 +67,8 @@ export default function TabLayout() {
         name="stats"
         options={{
           title: "Stats",
-          tabBarIcon: ({ color }) => (
-            <Feather name="bar-chart-2" size={22} color={color} />
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="chart-areaspline" size={size} color={color} />
           ),
         }}
       />
@@ -79,8 +76,8 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: "Settings",
-          tabBarIcon: ({ color }) => (
-            <Feather name="settings" size={22} color={color} />
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="tune-variant" size={size} color={color} />
           ),
         }}
       />

@@ -50,7 +50,16 @@
         {
           "icon": "./assets/images/icon.png",
           "color": "#34d399",
-          "sounds": []
+          "sounds": [
+            "./assets/audio/azan1.mp3",
+            "./assets/audio/azan2.mp3",
+            "./assets/audio/azan3.mp3",
+            "./assets/audio/azan4.mp3",
+            "./assets/audio/azan5.mp3",
+            "./assets/audio/azan6.mp3",
+            "./assets/audio/azan7.mp3",
+            "./assets/audio/azan8.mp3"
+          ]
         }
       ],
       [

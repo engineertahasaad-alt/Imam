@@ -17,20 +17,32 @@ export const ADHAN_VOICE_LABELS: Record<AdhanVoice, string> = {
   turkey:     "Turkish Traditional",
 };
 
-/**
- * Remote adhan audio URLs (islamcan.com CDN).
- * For a fully offline native build, replace with:
- *   require("../assets/audio/adhan_alafasy.mp3") etc.
- */
-const ADHAN_REMOTE_URLS: Record<AdhanVoice, string> = {
-  alafasy:    "https://www.islamcan.com/audio/adhan/azan1.mp3",
-  abdulbasit: "https://www.islamcan.com/audio/adhan/azan2.mp3",
-  madinah:    "https://www.islamcan.com/audio/adhan/azan3.mp3",
-  makkah:     "https://www.islamcan.com/audio/adhan/azan4.mp3",
-  sudais:     "https://www.islamcan.com/audio/adhan/azan5.mp3",
-  sghamdi:    "https://www.islamcan.com/audio/adhan/azan6.mp3",
-  haifa:      "https://www.islamcan.com/audio/adhan/azan7.mp3",
-  turkey:     "https://www.islamcan.com/audio/adhan/azan8.mp3",
+// ─── Bundled local audio (offline-capable) ───────────────────────────────────
+// Static require() calls are required so Metro bundler includes each file.
+// These files live at assets/audio/azan1.mp3 … azan8.mp3.
+// Metro bundler resolves require() for audio assets to a numeric ID at build time.
+const ADHAN_LOCAL_ASSETS: Record<AdhanVoice, number> = {
+  alafasy:    require("../assets/audio/azan1.mp3"),
+  abdulbasit: require("../assets/audio/azan2.mp3"),
+  madinah:    require("../assets/audio/azan3.mp3"),
+  makkah:     require("../assets/audio/azan4.mp3"),
+  sudais:     require("../assets/audio/azan5.mp3"),
+  sghamdi:    require("../assets/audio/azan6.mp3"),
+  haifa:      require("../assets/audio/azan7.mp3"),
+  turkey:     require("../assets/audio/azan8.mp3"),
+};
+
+// Filenames used when referencing sounds inside notification payloads.
+// Must match the entries in app.json "expo-notifications" > "sounds".
+const ADHAN_SOUND_FILES: Record<AdhanVoice, string> = {
+  alafasy:    "azan1.mp3",
+  abdulbasit: "azan2.mp3",
+  madinah:    "azan3.mp3",
+  makkah:     "azan4.mp3",
+  sudais:     "azan5.mp3",
+  sghamdi:    "azan6.mp3",
+  haifa:      "azan7.mp3",
+  turkey:     "azan8.mp3",
 };
 
 const PRAYER_ORDER = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"] as const;
@@ -40,17 +52,17 @@ let currentSound: Audio.Sound | null = null;
 async function configureAudioSession() {
   try {
     await Audio.setAudioModeAsync({
-      allowsRecordingIOS:          false,
-      playsInSilentModeIOS:        true,
-      staysActiveInBackground:     false,
-      shouldDuckAndroid:           false,
+      allowsRecordingIOS:      false,
+      playsInSilentModeIOS:    true,
+      staysActiveInBackground: false,
+      shouldDuckAndroid:       false,
     });
   } catch { /* ignore on web */ }
 }
 
 /**
- * Play adhan audio in the foreground (app is open).
- * Stops any currently playing adhan first.
+ * Play adhan from the bundled local asset (fully offline).
+ * Falls back to nothing if loading somehow fails — no network calls made.
  */
 export async function playAdhanInApp(voice: AdhanVoice, volume = 0.8): Promise<void> {
   if (Platform.OS === "web") return;
@@ -59,9 +71,9 @@ export async function playAdhanInApp(voice: AdhanVoice, volume = 0.8): Promise<v
   await configureAudioSession();
 
   try {
-    const url = ADHAN_REMOTE_URLS[voice];
+    const source = ADHAN_LOCAL_ASSETS[voice];
     const { sound } = await Audio.Sound.createAsync(
-      { uri: url },
+      source,
       { shouldPlay: true, volume: Math.max(0, Math.min(1, volume)) }
     );
     currentSound = sound;
@@ -96,11 +108,9 @@ export function isAdhanPlaying(): boolean {
 const ADHAN_NOTIFICATION_PREFIX = "adhan_";
 
 /**
- * Schedule adhan notification at exact prayer times.
- * On native, this fires even when the app is backgrounded/closed.
- * Custom notification sounds can be added in a native build via
- * android/app/src/main/res/raw/adhan_<voice>.mp3
- * and ios/<AppName>/adhan_<voice>.caf
+ * Schedule adhan notifications at exact prayer times.
+ * On native, fires even when the app is backgrounded/closed.
+ * The notification sound references a bundled MP3 (configured in app.json).
  */
 export async function scheduleAdhanNotifications(
   times: Record<string, Date>,
@@ -112,7 +122,8 @@ export async function scheduleAdhanNotifications(
   await cancelAdhanNotifications();
   if (!enabled) return;
 
-  const now = new Date();
+  const now       = new Date();
+  const soundFile = ADHAN_SOUND_FILES[voice];
   const voiceLabel = ADHAN_VOICE_LABELS[voice];
 
   const arabicNames: Record<string, string> = {
@@ -127,10 +138,10 @@ export async function scheduleAdhanNotifications(
     await Notifications.scheduleNotificationAsync({
       identifier: `${ADHAN_NOTIFICATION_PREFIX}${name}`,
       content: {
-        title:  `🕌 أذان ${arabicNames[name] ?? name}`,
-        body:   `${name} prayer time — ${voiceLabel}`,
-        sound:  true,
-        data:   { prayerName: name, type: "adhan", voice },
+        title: `🕌 أذان ${arabicNames[name] ?? name}`,
+        body:  `${name} prayer time — ${voiceLabel}`,
+        sound: soundFile,
+        data:  { prayerName: name, type: "adhan", voice },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -153,7 +164,7 @@ export async function cancelAdhanNotifications(): Promise<void> {
   } catch { /* ignore */ }
 }
 
-/** Play a short preview clip (first 15s) for the settings "Test" button. */
+/** Play a short preview clip (first 15 s) for the settings "Test" button. */
 export async function testAdhanPreview(voice: AdhanVoice, volume = 0.8): Promise<void> {
   await playAdhanInApp(voice, volume);
   setTimeout(() => stopAdhan(), 15_000);
