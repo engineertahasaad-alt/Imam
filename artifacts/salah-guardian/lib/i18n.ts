@@ -44,6 +44,7 @@ const en = {
   todays_prayers:  "TODAY'S PRAYERS",
   no_location:     "Set your location in Settings to see prayer times",
   start_detection: "Start Prayer Detection",
+  start_praying:   "Start praying",
   train_phone:     "Train Your Phone",
   train_desc:      "Teach Imam your body positions for better accuracy",
   pocket_hint:     "Place your phone in your pocket before starting prayer",
@@ -142,6 +143,7 @@ const en = {
   s_bg_reminders:      "Background Reminders",
   s_bg_reminders_desc: "Notifications when app is closed",
   s_preview_widget:    "Preview Widget Now",
+  s_manage_azkar:      "Manage Custom Azkar",
   s_about:             "ABOUT",
   s_version:           "Version",
   s_privacy:           "Privacy",
@@ -149,6 +151,23 @@ const en = {
   s_sensors:           "Sensors",
   s_accel_gyro:        "Accelerometer + Gyroscope",
   s_reset:             "Reset Setup",
+
+  // ── Appearance / Theme ───────────────────────────────────────────────────────
+  s_theme:        "APPEARANCE",
+  s_theme_dark:   "Dark",
+  s_theme_light:  "Light",
+  s_theme_system: "Auto",
+
+  // ── Custom Azkar ──────────────────────────────────────────────────────────────
+  s_custom_azkar_title: "Custom Azkar",
+  s_add_zikr:           "Add New Zikr",
+  s_zikr_arabic_ph:     "Arabic text (required)",
+  s_zikr_translit_ph:   "Transliteration (optional)",
+  s_zikr_trans_ph:      "Translation / meaning (optional)",
+  s_save_zikr:          "Add Zikr",
+  s_no_custom_azkar:    "No custom azkar yet. Tap the button below to add one.",
+  s_delete_zikr:        "Delete",
+  s_custom_zikr_hint:   "Custom azkar appear in rotation alongside the built-in ones.",
 } as const;
 
 const ar: { [K in keyof typeof en]: string } = {
@@ -195,6 +214,7 @@ const ar: { [K in keyof typeof en]: string } = {
   todays_prayers:   "صلوات اليوم",
   no_location:      "حدد موقعك في الإعدادات لرؤية أوقات الصلاة",
   start_detection:  "بدء رصد الصلاة",
+  start_praying:    "بداية الصلاة",
   train_phone:      "تدريب هاتفك",
   train_desc:       "علّم الإمام أوضاعك لدقة أفضل",
   pocket_hint:      "ضع هاتفك في جيبك قبل الصلاة",
@@ -293,6 +313,7 @@ const ar: { [K in keyof typeof en]: string } = {
   s_bg_reminders:      "تذكير في الخلفية",
   s_bg_reminders_desc: "إشعارات عند إغلاق التطبيق",
   s_preview_widget:    "معاينة الودجت الآن",
+  s_manage_azkar:      "إدارة الأذكار المخصصة",
   s_about:             "حول",
   s_version:           "الإصدار",
   s_privacy:           "الخصوصية",
@@ -300,6 +321,23 @@ const ar: { [K in keyof typeof en]: string } = {
   s_sensors:           "المستشعرات",
   s_accel_gyro:        "مقياس التسارع + الجيروسكوب",
   s_reset:             "إعادة الإعداد",
+
+  // ── Appearance / Theme ───────────────────────────────────────────────────────
+  s_theme:        "المظهر",
+  s_theme_dark:   "داكن",
+  s_theme_light:  "فاتح",
+  s_theme_system: "تلقائي",
+
+  // ── Custom Azkar ──────────────────────────────────────────────────────────────
+  s_custom_azkar_title: "الأذكار المخصصة",
+  s_add_zikr:           "إضافة ذكر جديد",
+  s_zikr_arabic_ph:     "النص العربي (مطلوب)",
+  s_zikr_translit_ph:   "النطق بالحروف اللاتينية (اختياري)",
+  s_zikr_trans_ph:      "الترجمة / المعنى (اختياري)",
+  s_save_zikr:          "إضافة الذكر",
+  s_no_custom_azkar:    "لا توجد أذكار مخصصة بعد. اضغط الزر أدناه لإضافة ذكر.",
+  s_delete_zikr:        "حذف",
+  s_custom_zikr_hint:   "تظهر الأذكار المخصصة في التناوب مع الأذكار المدمجة.",
 };
 
 export const translations = { en, ar };

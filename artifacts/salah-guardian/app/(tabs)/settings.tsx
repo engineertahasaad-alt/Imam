@@ -764,6 +764,15 @@ export default function SettingsScreen() {
               <Text style={{ fontSize: 14 }}>🤲</Text>
               <Text style={[styles.calibrateBtnText, { color: colors.primary }]}>{t("s_preview_widget")}</Text>
             </TouchableOpacity>
+
+            {/* Custom azkar management */}
+            <TouchableOpacity
+              style={[styles.calibrateBtn, { borderColor: colors.border }]}
+              onPress={() => router.push("/custom-azkar")}
+            >
+              <Feather name="plus-circle" size={16} color={colors.foreground} />
+              <Text style={[styles.calibrateBtnText, { color: colors.foreground }]}>{t("s_manage_azkar")}</Text>
+            </TouchableOpacity>
           </>
         )}
       </SettingsSection>
@@ -799,6 +808,41 @@ export default function SettingsScreen() {
           <Text style={[styles.insetHint, { color: colors.mutedForeground }]}>
             {t("s_language_note")}
           </Text>
+        </View>
+      </SettingsSection>
+
+      {/* ── Appearance / Theme ────────────────────────────────────────────── */}
+      <SettingsSection title={t("s_theme")} colors={colors}>
+        <View style={styles.insetSection}>
+          <View style={[styles.chipRow, { gap: 8 }]}>
+            {(["light", "dark", "system"] as const).map((thm) => {
+              const isActive = (settings.theme ?? "system") === thm;
+              const icon = thm === "light" ? "☀️" : thm === "dark" ? "🌙" : "⚙️";
+              const label = t(thm === "light" ? "s_theme_light" : thm === "dark" ? "s_theme_dark" : "s_theme_system");
+              return (
+                <TouchableOpacity
+                  key={thm}
+                  style={[
+                    styles.chip,
+                    {
+                      flex: 1,
+                      paddingVertical: 12,
+                      alignItems: "center",
+                      gap: 4,
+                      backgroundColor: isActive ? colors.primary : colors.secondary,
+                      borderColor:     isActive ? colors.primary : colors.border,
+                    },
+                  ]}
+                  onPress={() => updateSettings({ theme: thm })}
+                >
+                  <Text style={{ fontSize: 18 }}>{icon}</Text>
+                  <Text style={[styles.chipText, { fontSize: 12, color: isActive ? colors.primaryForeground : colors.mutedForeground }]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
       </SettingsSection>
 

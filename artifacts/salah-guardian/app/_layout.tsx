@@ -38,6 +38,7 @@ function RootLayoutNav() {
       <Stack.Screen name="index" />
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="custom-azkar" />
     </Stack>
   );
 }
@@ -52,15 +53,11 @@ export default function RootLayout() {
 
   const [iconsLoaded, setIconsLoaded] = useState(false);
 
-  // Load vector-icon fonts separately so an error in one set
-  // doesn't block the other from rendering.
   useEffect(() => {
     Font.loadAsync({
       MaterialCommunityIcons: require("@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf"),
     })
-      .catch(() => {
-        // Expo Go pre-bundles these fonts — a "already loaded" error is fine
-      })
+      .catch(() => {})
       .finally(() => setIconsLoaded(true));
   }, []);
 
@@ -83,7 +80,6 @@ export default function RootLayout() {
               <GestureHandlerRootView style={{ flex: 1 }}>
                 <KeyboardProvider>
                   <RootLayoutNav />
-                  {/* Widget renders above screens but below any Modal (prayer detection is safe) */}
                   <AzkarFloatingWidget />
                 </KeyboardProvider>
               </GestureHandlerRootView>

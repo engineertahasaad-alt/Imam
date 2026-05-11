@@ -41,6 +41,7 @@ import {
   scheduleAdhanNotifications,
   stopAdhan,
 } from "@/lib/adhanEngine";
+import { setStoredTheme } from "@/lib/themeStore";
 
 export interface PrayerStatus {
   name: string;
@@ -185,6 +186,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const [s, cal] = await Promise.all([getSettings(), getCalibration()]);
       setSettings(s);
       setCalibration(cal);
+      setStoredTheme((s.theme ?? "system") as "dark" | "light" | "system");
 
       if (s.latitude && s.longitude) {
         const times = computeTimes(
@@ -295,6 +297,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const updated = { ...settings, ...newSettings };
     setSettings(updated);
     await saveSettings(newSettings);
+    if (newSettings.theme !== undefined) {
+      setStoredTheme(newSettings.theme);
+    }
 
     if (
       newSettings.latitude !== undefined ||

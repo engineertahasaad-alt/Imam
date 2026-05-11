@@ -27,7 +27,7 @@ export interface Zikr {
   translation: string;
 }
 
-// ── Azkar Content ─────────────────────────────────────────────────────────────
+// ── Built-in Azkar Content ────────────────────────────────────────────────────
 
 export const AZKAR: Zikr[] = [
   {
@@ -115,11 +115,12 @@ export const DEFAULT_AZKAR_SETTINGS: AzkarSettings = {
   backgroundNotifications: true,
 };
 
-// ── Storage (separate namespace from prayer storage) ──────────────────────────
+// ── Storage keys ──────────────────────────────────────────────────────────────
 
-const SETTINGS_KEY = "@azkar/settings_v1";
-const HISTORY_KEY  = "@azkar/history_v1";
-const REPEAT_BUFFER = 4; // avoid repeating last N azkar
+const SETTINGS_KEY     = "@azkar/settings_v1";
+const HISTORY_KEY      = "@azkar/history_v1";
+const CUSTOM_AZKAR_KEY = "@azkar/custom_v1";
+const REPEAT_BUFFER    = 4;
 
 const VALID_FONT_SIZES = new Set<AzkarSettings["fontSize"]>(["small", "medium", "large"]);
 const VALID_POSITIONS  = new Set<AzkarSettings["position"]>(["left", "right"]);
@@ -165,7 +166,38 @@ export async function saveAzkarSettings(
   return updated;
 }
 
-// ── Smart rotation ────────────────────────────────────────────────────────────
+// ── Custom azkar CRUD ─────────────────────────────────────────────────────────
+
+export async function loadCustomAzkar(): Promise<Zikr[]> {
+  try {
+    const raw = await AsyncStorage.getItem(CUSTOM_AZKAR_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveCustomAzkar(azkar: Zikr[]): Promise<void> {
+  await AsyncStorage.setItem(CUSTOM_AZKAR_KEY, JSON.stringify(azkar));
+}
+
+export async function addCustomZikr(zikr: Zikr): Promise<Zikr[]> {
+  const current = await loadCustomAzkar();
+  const updated = [...current, zikr];
+  await saveCustomAzkar(updated);
+  return updated;
+}
+
+export async function deleteCustomZikr(index: number): Promise<Zikr[]> {
+  const current = await loadCustomAzkar();
+  const updated = current.filter((_, i) => i !== index);
+  await saveCustomAzkar(updated);
+  return updated;
+}
+
+// ── Smart rotation (includes custom azkar) ────────────────────────────────────
 
 async function loadHistory(): Promise<number[]> {
   try {
@@ -183,17 +215,20 @@ async function saveHistory(h: number[]): Promise<void> {
 }
 
 export async function pickNextZikr(): Promise<Zikr> {
+  const customAzkar = await loadCustomAzkar();
+  const allAzkar    = [...AZKAR, ...customAzkar];
+
   const history  = await loadHistory();
   const excluded = new Set(history.slice(-REPEAT_BUFFER));
-  const pool     = AZKAR
+  const pool     = allAzkar
     .map((_, i) => i)
     .filter((i) => !excluded.has(i));
 
-  const candidates = pool.length > 0 ? pool : AZKAR.map((_, i) => i);
+  const candidates = pool.length > 0 ? pool : allAzkar.map((_, i) => i);
   const chosen     = candidates[Math.floor(Math.random() * candidates.length)];
   const newHistory = [...history, chosen].slice(-(REPEAT_BUFFER * 3));
   await saveHistory(newHistory);
-  return AZKAR[chosen];
+  return allAzkar[chosen];
 }
 
 // ── Soft vibration (opt-in) ───────────────────────────────────────────────────
@@ -207,8 +242,8 @@ export function azkarSoftVibrate(): void {
 
 // ── Background notification scheduling ───────────────────────────────────────
 
-const AZKAR_PREFIX = "azkar_bg_";
-const SCHEDULE_AHEAD = 10; // schedule N notifications ahead
+const AZKAR_PREFIX   = "azkar_bg_";
+const SCHEDULE_AHEAD = 10;
 
 export async function scheduleAzkarNotifications(
   settings: AzkarSettings

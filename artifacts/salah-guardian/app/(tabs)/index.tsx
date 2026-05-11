@@ -16,7 +16,6 @@ import { CelebrationBanner } from "@/components/CelebrationBanner";
 import { DetectionModal } from "@/components/DetectionModal";
 import { NextPrayerCard } from "@/components/NextPrayerCard";
 import { PrayerAlertBanner } from "@/components/PrayerAlertBanner";
-import { PrayerTimesList } from "@/components/PrayerTimesList";
 import { QiblaCard } from "@/components/QiblaCard";
 import { StreakCard } from "@/components/StreakCard";
 import { TrainingModal } from "@/components/TrainingModal";
@@ -128,7 +127,7 @@ export default function HomeScreen() {
         style={{ flex: 1, backgroundColor: colors.background }}
         contentContainerStyle={[
           styles.container,
-          { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 16), paddingBottom },
+          { paddingTop: insets.top + (Platform.OS === "web" ? 60 : 10), paddingBottom },
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -160,13 +159,24 @@ export default function HomeScreen() {
           streak={streak}
         />
 
-        {/* Next prayer countdown */}
+        {/* Next prayer + prayer schedule merged in one card */}
         <NextPrayerCard
           nextPrayer={nextPrayer}
           nextPrayerTime={nextPrayerTime}
           timeRemaining={timeRemaining}
           currentPrayer={currentPrayer}
+          prayerStatuses={prayerStatuses}
         />
+
+        {/* No-location prompt */}
+        {prayerStatuses.length === 0 && (
+          <View style={[styles.noLocationCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Feather name="map-pin" size={22} color={colors.mutedForeground} />
+            <Text style={[styles.noLocationText, { color: colors.mutedForeground }]}>
+              {t("no_location")}
+            </Text>
+          </View>
+        )}
 
         {/* Streak stats */}
         <StreakCard streak={streak} todayCount={todayDetectedCount} />
@@ -176,33 +186,21 @@ export default function HomeScreen() {
           <QiblaCard userLat={settings.latitude} userLng={settings.longitude} />
         )}
 
-        {/* Today's prayers */}
-        {prayerStatuses.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
-              {t("todays_prayers")}
-            </Text>
-            <PrayerTimesList statuses={prayerStatuses} currentPrayer={currentPrayer} />
-          </View>
-        ) : (
-          <View style={[styles.noLocationCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Feather name="map-pin" size={24} color={colors.mutedForeground} />
-            <Text style={[styles.noLocationText, { color: colors.mutedForeground }]}>
-              {t("no_location")}
-            </Text>
-          </View>
-        )}
-
-        {/* Start Prayer Detection */}
+        {/* ── Start Praying button (bilingual) ── */}
         <TouchableOpacity
           style={[styles.detectBtn, { backgroundColor: colors.primary }]}
           onPress={() => setDetectionVisible(true)}
           activeOpacity={0.85}
         >
-          <Feather name="activity" size={22} color={colors.primaryForeground} />
-          <Text style={[styles.detectBtnText, { color: colors.primaryForeground }]}>
-            {t("start_detection")}
-          </Text>
+          <Feather name="activity" size={20} color={colors.primaryForeground} />
+          <View style={styles.detectBtnTextWrap}>
+            <Text style={[styles.detectBtnAr, { color: colors.primaryForeground }]}>
+              {t("start_praying")}
+            </Text>
+            <Text style={[styles.detectBtnEn, { color: colors.primaryForeground + "cc" }]}>
+              Start praying
+            </Text>
+          </View>
         </TouchableOpacity>
 
         {/* Train Phone */}
@@ -268,42 +266,41 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
   loadingText: { fontSize: 15 },
 
-  container: { paddingHorizontal: 20, gap: 16 },
+  container: { paddingHorizontal: 16, gap: 12 },
 
   greetingRow: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
   },
-  greetingMain: { fontSize: 17, fontWeight: "700", letterSpacing: -0.3 },
-  greetingSub:  { fontSize: 12, marginTop: 2 },
+  greetingMain: { fontSize: 16, fontWeight: "700", letterSpacing: -0.3 },
+  greetingSub:  { fontSize: 11, marginTop: 2 },
   settingsBtn:  {
-    width: 38, height: 38, borderRadius: 19, borderWidth: 1,
+    width: 36, height: 36, borderRadius: 18, borderWidth: 1,
     alignItems: "center", justifyContent: "center",
   },
-  section:      { gap: 8 },
-  sectionTitle: { fontSize: 11, fontWeight: "600", letterSpacing: 0.8, paddingLeft: 4 },
 
   noLocationCard: {
-    borderRadius: 16, borderWidth: 1, padding: 24, alignItems: "center", gap: 12,
+    borderRadius: 14, borderWidth: 1, padding: 20, alignItems: "center", gap: 10,
   },
-  noLocationText: { fontSize: 14, textAlign: "center", lineHeight: 20 },
+  noLocationText: { fontSize: 13, textAlign: "center", lineHeight: 18 },
 
   detectBtn: {
-    borderRadius: 16, paddingVertical: 17,
+    borderRadius: 16, paddingVertical: 14,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
-    marginTop: 4,
   },
-  detectBtnText: { fontSize: 17, fontWeight: "700" },
+  detectBtnTextWrap: { alignItems: "flex-start" },
+  detectBtnAr:  { fontSize: 18, fontWeight: "800", letterSpacing: 0.3 },
+  detectBtnEn:  { fontSize: 12, fontWeight: "500", marginTop: 1 },
 
   trainCard: {
-    borderRadius: 16, borderWidth: 1, padding: 14,
+    borderRadius: 14, borderWidth: 1, padding: 12,
     flexDirection: "row", alignItems: "center", gap: 12,
   },
   trainIcon: {
-    width: 44, height: 44, borderRadius: 22,
+    width: 42, height: 42, borderRadius: 21,
     alignItems: "center", justifyContent: "center",
   },
-  trainTitle: { fontSize: 15, fontWeight: "600", marginBottom: 2 },
-  trainDesc:  { fontSize: 12, lineHeight: 17 },
+  trainTitle: { fontSize: 14, fontWeight: "600", marginBottom: 2 },
+  trainDesc:  { fontSize: 11, lineHeight: 16 },
 
-  hint: { textAlign: "center", fontSize: 12, lineHeight: 18, marginTop: -4 },
+  hint: { textAlign: "center", fontSize: 11, lineHeight: 16, marginTop: -4 },
 });
