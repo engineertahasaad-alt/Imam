@@ -1,4 +1,5 @@
-import { Audio } from "expo-av";
+import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
+import type { AudioPlayer } from "expo-audio";
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
 
@@ -20,48 +21,49 @@ async function rigid() {
   await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
 }
 
-// ── Beep sound ───────────────────────────────────────────────────────────────
+// ── Beep sound (expo-audio) ───────────────────────────────────────────────────
 
-let _beepSound: Audio.Sound | null = null;
-let _beepLoading = false;
+let _beepPlayer: AudioPlayer | null = null;
+let _beepReady = false;
 
-async function getBeepSound(): Promise<Audio.Sound | null> {
-  if (_beepSound) return _beepSound;
-  if (_beepLoading) return null;
-  _beepLoading = true;
+async function getBeepPlayer(): Promise<AudioPlayer | null> {
+  if (_beepPlayer && _beepReady) return _beepPlayer;
   try {
-    await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-    const { sound } = await Audio.Sound.createAsync(
+    await setAudioModeAsync({
+      playsInSilentMode: true,
+      interruptionMode: "mixWithOthers",
+    });
+    const player = createAudioPlayer(
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require("../assets/audio/beep.wav"),
-      { shouldPlay: false, volume: 1.0 }
+      require("../assets/audio/beep.wav")
     );
-    _beepSound = sound;
-    return sound;
+    player.volume = 1.0;
+    player.loop = false;
+    _beepPlayer = player;
+    _beepReady = true;
+    return player;
   } catch {
     return null;
-  } finally {
-    _beepLoading = false;
   }
 }
 
 /** Pre-load the beep sound so it's ready instantly when needed. */
 export function preloadBeep() {
-  if (IS_NATIVE) getBeepSound();
+  if (IS_NATIVE) getBeepPlayer();
 }
 
-/** Play a short beep to signal a wrong posture (in addition to vibration). */
+/** Play a short beep to signal a wrong posture (alongside vibration). */
 export async function playWrongBeep(enabled: boolean) {
   if (!IS_NATIVE || !enabled) return;
   try {
-    const sound = await getBeepSound();
-    if (!sound) return;
-    await sound.setPositionAsync(0);
-    await sound.playAsync();
+    const player = await getBeepPlayer();
+    if (!player) return;
+    player.seekTo(0);
+    player.play();
   } catch { /* ignore */ }
 }
 
-// ── Two primary patterns ────────────────────────────────────────────────────
+// ── Two primary patterns ─────────────────────────────────────────────────────
 
 /**
  * CORRECT posture confirmed — short sharp double-tap.
@@ -129,7 +131,7 @@ export async function vibrateWrong(
   } catch { /* ignore */ }
 }
 
-// ── Position-specific patterns ──────────────────────────────────────────────
+// ── Position-specific patterns ───────────────────────────────────────────────
 
 export async function vibratePosition(
   position: BodyPosition,
@@ -158,7 +160,7 @@ export async function vibratePosition(
   } catch { /* ignore */ }
 }
 
-// ── Event patterns ──────────────────────────────────────────────────────────
+// ── Event patterns ───────────────────────────────────────────────────────────
 
 /** Double heavy thud — one rak'ah counted. */
 export async function vibrateRakaatComplete(enabled: boolean) {

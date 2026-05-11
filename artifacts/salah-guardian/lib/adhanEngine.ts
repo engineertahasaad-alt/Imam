@@ -1,4 +1,5 @@
-import { Audio, AVPlaybackStatus } from "expo-av";
+import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
+import type { AudioPlayer } from "expo-audio";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
@@ -17,10 +18,8 @@ export const ADHAN_VOICE_LABELS: Record<AdhanVoice, string> = {
   turkey:     "Turkish Traditional",
 };
 
-// ─── Bundled local audio (offline-capable) ───────────────────────────────────
-// Static require() calls are required so Metro bundler includes each file.
-// These files live at assets/audio/azan1.mp3 … azan8.mp3.
-// Metro bundler resolves require() for audio assets to a numeric ID at build time.
+// ─── Bundled local audio (offline-capable) ────────────────────────────────────
+// Static require() calls so Metro bundler includes each file.
 const ADHAN_LOCAL_ASSETS: Record<AdhanVoice, number> = {
   alafasy:    require("../assets/audio/azan1.mp3"),
   abdulbasit: require("../assets/audio/azan2.mp3"),
@@ -32,8 +31,7 @@ const ADHAN_LOCAL_ASSETS: Record<AdhanVoice, number> = {
   turkey:     require("../assets/audio/azan8.mp3"),
 };
 
-// Filenames used when referencing sounds inside notification payloads.
-// Must match the entries in app.json "expo-notifications" > "sounds".
+// Sound file names used in notification payloads (must match app.json "sounds" array).
 const ADHAN_SOUND_FILES: Record<AdhanVoice, string> = {
   alafasy:    "azan1.mp3",
   abdulbasit: "azan2.mp3",
@@ -47,22 +45,22 @@ const ADHAN_SOUND_FILES: Record<AdhanVoice, string> = {
 
 const PRAYER_ORDER = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"] as const;
 
-let currentSound: Audio.Sound | null = null;
+let currentPlayer: AudioPlayer | null = null;
+let stopTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function configureAudioSession() {
   try {
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS:      false,
-      playsInSilentModeIOS:    true,
-      staysActiveInBackground: false,
-      shouldDuckAndroid:       false,
+    await setAudioModeAsync({
+      playsInSilentMode:   true,
+      interruptionMode:    "doNotMix",
+      shouldPlayInBackground: false,
     });
   } catch { /* ignore on web */ }
 }
 
 /**
  * Play adhan from the bundled local asset (fully offline).
- * Falls back to nothing if loading somehow fails — no network calls made.
+ * Uses expo-audio (SDK 54 compatible). Falls back silently on errors.
  */
 export async function playAdhanInApp(voice: AdhanVoice, volume = 0.8): Promise<void> {
   if (Platform.OS === "web") return;
@@ -72,35 +70,30 @@ export async function playAdhanInApp(voice: AdhanVoice, volume = 0.8): Promise<v
 
   try {
     const source = ADHAN_LOCAL_ASSETS[voice];
-    const { sound } = await Audio.Sound.createAsync(
-      source,
-      { shouldPlay: true, volume: Math.max(0, Math.min(1, volume)) }
-    );
-    currentSound = sound;
-    sound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
-      if (status.isLoaded && status.didJustFinish) {
-        sound.unloadAsync().catch(() => {});
-        currentSound = null;
-      }
-    });
+    const player = createAudioPlayer(source);
+    player.volume = Math.max(0, Math.min(1, volume));
+    player.loop   = false;
+    player.play();
+    currentPlayer = player;
   } catch (err) {
     console.warn("[AdhanEngine] playAdhanInApp error:", err);
   }
 }
 
-/** Stop any in-app adhan currently playing. */
+/** Stop any in-app adhan currently playing and free resources. */
 export async function stopAdhan(): Promise<void> {
-  if (!currentSound) return;
+  if (stopTimer) { clearTimeout(stopTimer); stopTimer = null; }
+  if (!currentPlayer) return;
   try {
-    await currentSound.stopAsync();
-    await currentSound.unloadAsync();
+    currentPlayer.pause();
+    currentPlayer.remove();
   } catch { /* ignore */ }
-  currentSound = null;
+  currentPlayer = null;
 }
 
 /** Returns true if adhan is currently playing. */
 export function isAdhanPlaying(): boolean {
-  return currentSound !== null;
+  return currentPlayer !== null;
 }
 
 // ─── Notification-based adhan scheduling ─────────────────────────────────────
@@ -109,7 +102,7 @@ const ADHAN_NOTIFICATION_PREFIX = "adhan_";
 
 /**
  * Schedule adhan notifications at exact prayer times.
- * On native, fires even when the app is backgrounded/closed.
+ * Fires even when the app is backgrounded/closed (on native dev builds & APKs).
  * The notification sound references a bundled MP3 (configured in app.json).
  */
 export async function scheduleAdhanNotifications(
@@ -167,5 +160,5 @@ export async function cancelAdhanNotifications(): Promise<void> {
 /** Play a short preview clip (first 15 s) for the settings "Test" button. */
 export async function testAdhanPreview(voice: AdhanVoice, volume = 0.8): Promise<void> {
   await playAdhanInApp(voice, volume);
-  setTimeout(() => stopAdhan(), 15_000);
+  stopTimer = setTimeout(() => stopAdhan(), 15_000);
 }

@@ -5,12 +5,12 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as Font from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useState } from "react";
-import { LogBox, Platform } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { LogBox } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -22,6 +22,8 @@ LogBox.ignoreLogs([
   "expo-notifications: Android Push notifications",
   "[expo-notifications]",
   "expo-notifications",
+  "[expo-av]",
+  "shadow*",
 ]);
 
 SplashScreen.preventAutoHideAsync();
@@ -39,30 +41,39 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts({
+  const [interLoaded, interError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
-    ...MaterialCommunityIcons.font,
   });
 
-  const [ready, setReady] = useState(Platform.OS === "web");
+  const [iconsLoaded, setIconsLoaded] = useState(false);
+
+  // Load vector-icon fonts separately so an error in one set
+  // doesn't block the other from rendering.
   useEffect(() => {
-    const t = setTimeout(() => setReady(true), 2000);
-    return () => clearTimeout(t);
+    Font.loadAsync({
+      MaterialCommunityIcons: require("@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf"),
+    })
+      .catch(() => {
+        // Expo Go pre-bundles these fonts — a "already loaded" error is fine
+      })
+      .finally(() => setIconsLoaded(true));
   }, []);
 
-  useEffect(() => {
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, fontError]);
+  const fontsReady = (interLoaded || interError) && iconsLoaded;
 
-  if (!fontsLoaded && !fontError && !ready) return null;
+  const onLayoutRootView = useCallback(async () => {
+    if (fontsReady) {
+      await SplashScreen.hideAsync();
+    }
+  }, [fontsReady]);
+
+  if (!fontsReady) return null;
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider onLayout={onLayoutRootView}>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <AppProvider>

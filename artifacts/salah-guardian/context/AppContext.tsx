@@ -36,7 +36,11 @@ import {
   requestNotificationPermissions,
   scheduleAllPrayerReminders,
 } from "@/lib/notifications";
-import { scheduleAdhanNotifications } from "@/lib/adhanEngine";
+import {
+  playAdhanInApp,
+  scheduleAdhanNotifications,
+  stopAdhan,
+} from "@/lib/adhanEngine";
 
 export interface PrayerStatus {
   name: string;
@@ -129,6 +133,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const todayTimesRef = useRef<PrayerTimes | null>(null);
   todayTimesRef.current = todayTimes;
 
+  // Keep a ref to settings so the adhan timer always reads the latest values
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+
+  // Track previous timeRemaining to detect the moment prayer time arrives
+  const prevTimeRemainingRef = useRef<number>(0);
+  const adhanFiredRef = useRef<string>(""); // which prayer we already fired for
+
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -142,9 +154,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setNextPrayer(info.next);
         setNextPrayerTime(info.nextTime);
         setTimeRemaining(info.timeRemaining);
+
+        // Foreground adhan: fire when timeRemaining crosses from positive → ≤ 0
+        // (meaning a prayer time just arrived while the app is open)
+        const prev = prevTimeRemainingRef.current;
+        const curr = info.timeRemaining;
+        const prayerKey = info.next + "_" + (info.nextTime?.toISOString().slice(0, 16) ?? "");
+        if (
+          prev > 0 &&
+          curr <= 0 &&
+          info.next &&
+          adhanFiredRef.current !== prayerKey
+        ) {
+          adhanFiredRef.current = prayerKey;
+          // Read settings directly from ref — avoids stale closure
+          const s = settingsRef.current;
+          if (s.adhanEnabled && Platform.OS !== "web") {
+            playAdhanInApp(s.adhanVoice as any, s.adhanVolume ?? 0.8).catch(() => {});
+          }
+        }
+        prevTimeRemainingRef.current = curr;
       }
     }, 1000);
-    return () => clearInterval(timer);
+    return () => { clearInterval(timer); stopAdhan(); };
   }, []);
 
   async function loadInitialData() {
