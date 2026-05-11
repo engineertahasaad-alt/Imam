@@ -12,12 +12,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { useTranslation } from "@/hooks/useTranslation";
 import {
   PRAYER_NAMES,
   formatDate,
   getPrayersForDate,
   getTodayString,
 } from "@/lib/storage";
+
+const TAB_H = Platform.OS === "web" ? 84 : 62;
 
 interface DayEntry {
   date: string;
@@ -32,15 +35,16 @@ interface DayEntry {
 }
 
 export default function LogScreen() {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
+  const colors      = useColors();
+  const insets      = useSafeAreaInsets();
+  const { t, lang } = useTranslation();
   const { prayerStatuses, markPrayerManual } = useApp();
-  const [days, setDays] = useState<DayEntry[]>([]);
+  const [days, setDays]       = useState<DayEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadLog();
-  }, [prayerStatuses]);
+  }, [prayerStatuses, lang]);
 
   async function loadLog() {
     setLoading(true);
@@ -65,7 +69,10 @@ export default function LogScreen() {
 
       entries.push({
         date: dateStr,
-        label: i === 0 ? "Today" : i === 1 ? "Yesterday" : formatDayLabel(d),
+        label:
+          i === 0 ? t("log_today") :
+          i === 1 ? t("log_yesterday") :
+          formatDayLabel(d, lang),
         prayers,
       });
     }
@@ -80,8 +87,7 @@ export default function LogScreen() {
     await loadLog();
   }
 
-  const paddingBottom =
-    Platform.OS === "web" ? insets.bottom + 84 : insets.bottom + 80;
+  const paddingBottom = TAB_H + insets.bottom;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -97,10 +103,10 @@ export default function LogScreen() {
         ]}
       >
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-          Prayer Log
+          {t("prayer_log")}
         </Text>
         <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
-          Last 14 days
+          {t("last_14_days")}
         </Text>
       </View>
 
@@ -118,10 +124,7 @@ export default function LogScreen() {
           <View
             style={[
               styles.dayCard,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-              },
+              { backgroundColor: colors.card, borderColor: colors.border },
             ]}
           >
             <View style={styles.dayHeader}>
@@ -165,22 +168,14 @@ export default function LogScreen() {
                   style={[
                     styles.prayerChip,
                     {
-                      backgroundColor: p.detected
-                        ? colors.primary
-                        : colors.secondary,
-                      borderColor: p.detected ? colors.primary : colors.border,
+                      backgroundColor: p.detected ? colors.primary : colors.secondary,
+                      borderColor:     p.detected ? colors.primary : colors.border,
                     },
                   ]}
-                  onPress={() =>
-                    !p.detected && handleMarkManual(item.date, p.name)
-                  }
+                  onPress={() => !p.detected && handleMarkManual(item.date, p.name)}
                 >
                   {p.detected ? (
-                    <Feather
-                      name="check"
-                      size={10}
-                      color={colors.primaryForeground}
-                    />
+                    <Feather name="check" size={10} color={colors.primaryForeground} />
                   ) : null}
                   <Text
                     style={[
@@ -204,7 +199,7 @@ export default function LogScreen() {
             <View style={styles.empty}>
               <Feather name="book-open" size={40} color={colors.border} />
               <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                No prayer records yet
+                {t("no_records")}
               </Text>
             </View>
           )
@@ -214,11 +209,11 @@ export default function LogScreen() {
   );
 }
 
-function formatDayLabel(date: Date): string {
-  return date.toLocaleDateString("en-US", {
+function formatDayLabel(date: Date, lang: "en" | "ar"): string {
+  return date.toLocaleDateString(lang === "ar" ? "ar-SA" : "en-US", {
     weekday: "short",
-    month: "short",
-    day: "numeric",
+    month:   "short",
+    day:     "numeric",
   });
 }
 
@@ -228,67 +223,23 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: "700",
-  },
-  headerSub: {
-    fontSize: 13,
-    marginTop: 2,
-  },
-  dayCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-    gap: 12,
-  },
-  dayHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  dayLabel: {
-    fontSize: 15,
-    fontWeight: "700",
-    flex: 1,
-  },
-  dayDate: {
-    fontSize: 11,
-  },
-  dayBadge: {
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  dayBadgeText: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  prayerRow: {
-    flexDirection: "row",
-    gap: 6,
-  },
+  headerTitle: { fontSize: 26, fontWeight: "700" },
+  headerSub:   { fontSize: 13, marginTop: 2 },
+
+  dayCard:   { borderRadius: 14, borderWidth: 1, padding: 14, gap: 12 },
+  dayHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  dayLabel:  { fontSize: 15, fontWeight: "700", flex: 1 },
+  dayDate:   { fontSize: 11 },
+  dayBadge:  { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  dayBadgeText: { fontSize: 12, fontWeight: "700" },
+
+  prayerRow: { flexDirection: "row", gap: 6 },
   prayerChip: {
-    flex: 1,
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingVertical: 8,
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 3,
+    flex: 1, borderRadius: 10, borderWidth: 1, paddingVertical: 8,
+    alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 3,
   },
-  prayerChipText: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  empty: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 80,
-    gap: 12,
-  },
-  emptyText: {
-    fontSize: 14,
-  },
+  prayerChipText: { fontSize: 11, fontWeight: "600" },
+
+  empty:     { alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 12 },
+  emptyText: { fontSize: 14 },
 });

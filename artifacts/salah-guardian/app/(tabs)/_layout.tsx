@@ -3,12 +3,18 @@ import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
 import React from "react";
 import { Platform, StyleSheet, useColorScheme, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
+import { useTranslation } from "@/hooks/useTranslation";
+
+const TAB_H = Platform.OS === "web" ? 84 : 62;
 
 export default function TabLayout() {
-  const colors = useColors();
+  const colors      = useColors();
   const colorScheme = useColorScheme();
+  const insets      = useSafeAreaInsets();
+  const { t }       = useTranslation();
   const isDark = colorScheme === "dark";
   const isIOS  = Platform.OS === "ios";
   const isWeb  = Platform.OS === "web";
@@ -24,8 +30,9 @@ export default function TabLayout() {
           backgroundColor: isIOS ? "transparent" : colors.background,
           borderTopWidth:  StyleSheet.hairlineWidth,
           borderTopColor:  colors.border,
-          elevation: 0,
-          height: isWeb ? 84 : 60,
+          elevation:       0,
+          height:          isWeb ? 84 : TAB_H + insets.bottom,
+          paddingBottom:   isWeb ? 0  : insets.bottom,
         },
         tabBarBackground: () =>
           isIOS ? (
@@ -40,7 +47,7 @@ export default function TabLayout() {
             />
           ) : null,
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize:   10,
           fontWeight: "500",
         },
       }}
@@ -48,7 +55,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: t("tab_home"),
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="mosque" size={size} color={color} />
           ),
@@ -57,7 +64,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="log"
         options={{
-          title: "Prayer Log",
+          title: t("tab_log"),
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="calendar-check" size={size} color={color} />
           ),
@@ -66,7 +73,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="stats"
         options={{
-          title: "Stats",
+          title: t("tab_stats"),
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="chart-areaspline" size={size} color={color} />
           ),
@@ -75,7 +82,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
+          title: t("tab_settings"),
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="tune-variant" size={size} color={color} />
           ),

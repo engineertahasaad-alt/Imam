@@ -3,6 +3,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
+import { useTranslation } from "@/hooks/useTranslation";
 import { PRAYER_ARABIC, formatCountdown, formatTime } from "@/lib/prayerCalculator";
 
 interface Props {
@@ -18,10 +19,10 @@ export function NextPrayerCard({
   timeRemaining,
   currentPrayer,
 }: Props) {
-  const colors = useColors();
-
+  const colors      = useColors();
+  const { t }       = useTranslation();
   const countdownText = formatCountdown(timeRemaining);
-  const nextTimeText = nextPrayerTime ? formatTime(nextPrayerTime) : "--:--";
+  const nextTimeText  = nextPrayerTime ? formatTime(nextPrayerTime) : "--:--";
 
   return (
     <LinearGradient
@@ -33,17 +34,12 @@ export function NextPrayerCard({
       {/* Decorative arc */}
       <View style={styles.arcContainer}>
         <View style={[styles.arc, { borderColor: colors.primary + "30" }]} />
-        <View
-          style={[
-            styles.arcInner,
-            { borderColor: colors.primary + "20" },
-          ]}
-        />
+        <View style={[styles.arcInner, { borderColor: colors.primary + "20" }]} />
       </View>
 
       <View style={styles.content}>
         <Text style={[styles.currentLabel, { color: colors.mutedForeground }]}>
-          Now: {currentPrayer}
+          {t("now_label")} {currentPrayer}
         </Text>
 
         <Text style={[styles.arabic, { color: colors.primary + "cc" }]}>
@@ -59,7 +55,7 @@ export function NextPrayerCard({
           {countdownText}
         </Text>
         <Text style={[styles.timeLabel, { color: colors.mutedForeground }]}>
-          at {nextTimeText}
+          {t("at_label")} {nextTimeText}
         </Text>
       </View>
     </LinearGradient>
@@ -95,39 +91,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     position: "absolute",
   },
-  content: {
-    alignItems: "center",
-  },
-  currentLabel: {
-    fontSize: 12,
-    marginBottom: 12,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
-  arabic: {
-    fontSize: 28,
-    marginBottom: 4,
-    fontWeight: "300",
-  },
-  prayerName: {
-    fontSize: 32,
-    fontWeight: "700",
-    letterSpacing: -0.5,
-    marginBottom: 16,
-  },
-  divider: {
-    width: 40,
-    height: 1,
-    marginBottom: 16,
-  },
-  countdown: {
-    fontSize: 44,
-    fontWeight: "200",
-    letterSpacing: 2,
-    fontVariant: ["tabular-nums"],
-  },
-  timeLabel: {
-    fontSize: 13,
-    marginTop: 6,
-  },
+  content:      { alignItems: "center" },
+  currentLabel: { fontSize: 12, marginBottom: 12, letterSpacing: 1, textTransform: "uppercase" },
+  arabic:       { fontSize: 28, marginBottom: 4, fontWeight: "300" },
+  prayerName:   { fontSize: 32, fontWeight: "700", letterSpacing: -0.5, marginBottom: 16 },
+  divider:      { width: 40, height: 1, marginBottom: 16 },
+  countdown:    { fontSize: 44, fontWeight: "200", letterSpacing: 2, fontVariant: ["tabular-nums"] },
+  timeLabel:    { fontSize: 13, marginTop: 6 },
 });

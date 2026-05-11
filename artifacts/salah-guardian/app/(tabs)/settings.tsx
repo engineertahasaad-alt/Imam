@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import React from "react";
 import {
   Alert,
+  I18nManager,
   Platform,
   ScrollView,
   StyleSheet,
@@ -17,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import { useAzkar } from "@/context/AzkarContext";
 import { useColors } from "@/hooks/useColors";
+import { useTranslation } from "@/hooks/useTranslation";
 import {
   ADHAN_VOICE_LABELS,
   testAdhanPreview,
@@ -27,10 +29,12 @@ import {
 } from "@/lib/prayerCalculator";
 import type { AdhanVoice } from "@/lib/storage";
 
-const REMINDER_OFFSET_OPTIONS = [0, 5, 10, 15, 20, 30];
-const TIME_OFFSET_OPTIONS = [-15, -10, -5, 0, 5, 10, 15];
+const TAB_H = Platform.OS === "web" ? 84 : 62;
 
-const SENSITIVITY_LABELS: Record<number, string> = {
+const REMINDER_OFFSET_OPTIONS = [0, 5, 10, 15, 20, 30];
+const TIME_OFFSET_OPTIONS     = [-15, -10, -5, 0, 5, 10, 15];
+
+const SENSITIVITY_LABELS_EN: Record<number, string> = {
   1: "Very Stable — Fewest false detections",
   2: "Stable — Recommended for beginners",
   3: "Balanced — Default",
@@ -38,18 +42,33 @@ const SENSITIVITY_LABELS: Record<number, string> = {
   5: "Very Responsive — Fastest (more false positives)",
 };
 
-const STRENGTH_LABELS: Record<string, { label: string; hint: string }> = {
+const SENSITIVITY_LABELS_AR: Record<number, string> = {
+  1: "مستقر جداً — أقل اكتشافات خاطئة",
+  2: "مستقر — موصى للمبتدئين",
+  3: "متوازن — افتراضي",
+  4: "متجاوب — انتقالات أسرع",
+  5: "متجاوب جداً — الأسرع (قد يخطئ أكثر)",
+};
+
+const STRENGTH_LABELS_EN: Record<string, { label: string; hint: string }> = {
   low:    { label: "Gentle",  hint: "1 pulse" },
   medium: { label: "Strong",  hint: "2 pulses" },
   high:   { label: "Maximum", hint: "3–4 pulses" },
+};
+
+const STRENGTH_LABELS_AR: Record<string, { label: string; hint: string }> = {
+  low:    { label: "خفيف",  hint: "نبضة" },
+  medium: { label: "قوي",   hint: "نبضتان" },
+  high:   { label: "أقصى",  hint: "3–4 نبضات" },
 };
 
 const FREQUENCY_OPTIONS = [5, 10, 15, 20, 30];
 const DISPLAY_OPTIONS   = [3, 5, 8, 10];
 
 export default function SettingsScreen() {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
+  const colors  = useColors();
+  const insets  = useSafeAreaInsets();
+  const { t, isArabic } = useTranslation();
   const { settings, updateSettings, calibration, saveCalibrationData } = useApp();
   const { settings: azkar, updateSettings: updateAzkar, showNow } = useAzkar();
 
@@ -57,6 +76,9 @@ export default function SettingsScreen() {
   const vibrationStrength = settings.vibrationStrength ?? "high";
   const prayerOffset      = settings.prayerTimeOffsetMinutes ?? 0;
   const [nameInput, setNameInput] = React.useState(settings.userName ?? "");
+
+  const SENSITIVITY_LABELS = isArabic ? SENSITIVITY_LABELS_AR : SENSITIVITY_LABELS_EN;
+  const STRENGTH_LABELS    = isArabic ? STRENGTH_LABELS_AR    : STRENGTH_LABELS_EN;
 
   async function changeMethod(method: CalculationMethod) {
     await updateSettings({ calculationMethod: method });
@@ -74,9 +96,9 @@ export default function SettingsScreen() {
     await updateSettings({ prayerTimeOffsetMinutes: offset });
   }
 
-  const adhanEnabled  = settings.adhanEnabled  ?? false;
-  const adhanVoice    = (settings.adhanVoice   ?? "alafasy") as AdhanVoice;
-  const adhanVolume   = settings.adhanVolume   ?? 0.8;
+  const adhanEnabled = settings.adhanEnabled  ?? false;
+  const adhanVoice   = (settings.adhanVoice   ?? "alafasy") as AdhanVoice;
+  const adhanVolume  = settings.adhanVolume   ?? 0.8;
 
   async function changeAdhanEnabled(val: boolean) {
     await updateSettings({ adhanEnabled: val });
@@ -91,14 +113,30 @@ export default function SettingsScreen() {
     await testAdhanPreview(adhanVoice, adhanVolume);
   }
 
+  async function handleLanguageChange(lang: "en" | "ar") {
+    I18nManager.forceRTL(lang === "ar");
+    await updateSettings({ language: lang });
+    if (Platform.OS !== "web") {
+      Alert.alert(
+        lang === "ar" ? "تم تغيير اللغة" : "Language Changed",
+        lang === "ar"
+          ? "أعد تشغيل التطبيق لتطبيق تخطيط العربية الكامل."
+          : "Please restart the app to apply the full layout change.",
+        [{ text: lang === "ar" ? "حسناً" : "OK" }]
+      );
+    }
+  }
+
   function resetOnboarding() {
     Alert.alert(
-      "Reset App",
-      "This will clear your onboarding status and restart the setup. Your prayer log will be kept.",
+      isArabic ? "إعادة الإعداد" : "Reset App",
+      isArabic
+        ? "سيؤدي هذا إلى مسح حالة الإعداد وإعادة التشغيل. سيتم الاحتفاظ بسجل صلاتك."
+        : "This will clear your onboarding status and restart the setup. Your prayer log will be kept.",
       [
-        { text: "Cancel", style: "cancel" },
+        { text: isArabic ? "إلغاء" : "Cancel", style: "cancel" },
         {
-          text: "Reset",
+          text: isArabic ? "إعادة" : "Reset",
           style: "destructive",
           onPress: async () => {
             await updateSettings({ hasCompletedOnboarding: false });
@@ -109,8 +147,7 @@ export default function SettingsScreen() {
     );
   }
 
-  const paddingBottom =
-    Platform.OS === "web" ? insets.bottom + 84 : insets.bottom + 80;
+  const paddingBottom = TAB_H + insets.bottom;
 
   return (
     <ScrollView
@@ -121,19 +158,19 @@ export default function SettingsScreen() {
       ]}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={[styles.title, { color: colors.foreground }]}>Settings</Text>
+      <Text style={[styles.title, { color: colors.foreground }]}>{t("s_settings")}</Text>
 
       {/* ── Profile ───────────────────────────────────────────────────────── */}
-      <SettingsSection title="Profile" colors={colors}>
+      <SettingsSection title={t("s_profile")} colors={colors}>
         <SettingsRow colors={colors}>
           <Feather name="user" size={18} color={colors.primary} />
           <View style={{ flex: 1 }}>
-            <Text style={[styles.rowLabel, { color: colors.foreground }]}>Your Name</Text>
+            <Text style={[styles.rowLabel, { color: colors.foreground }]}>{t("s_your_name")}</Text>
             <TextInput
               style={[styles.nameField, { color: colors.foreground, borderColor: colors.border }]}
               value={nameInput}
               onChangeText={setNameInput}
-              placeholder="Enter your name (optional)"
+              placeholder={t("s_name_ph")}
               placeholderTextColor={colors.mutedForeground}
               autoCapitalize="words"
               returnKeyType="done"
@@ -146,20 +183,20 @@ export default function SettingsScreen() {
       </SettingsSection>
 
       {/* ── Location ──────────────────────────────────────────────────────── */}
-      <SettingsSection title="Location" colors={colors}>
+      <SettingsSection title={t("s_location")} colors={colors}>
         <SettingsRow colors={colors}>
           <Feather name="map-pin" size={18} color={colors.primary} />
           <View style={{ flex: 1 }}>
-            <Text style={[styles.rowLabel, { color: colors.foreground }]}>City</Text>
+            <Text style={[styles.rowLabel, { color: colors.foreground }]}>{t("s_city")}</Text>
             <Text style={[styles.rowValue, { color: colors.mutedForeground }]}>
-              {settings.cityName ?? "Not set"}
+              {settings.cityName ?? t("s_not_set")}
             </Text>
           </View>
           <TouchableOpacity
             style={[styles.changeBtn, { backgroundColor: colors.secondary }]}
             onPress={() => router.push("/onboarding/setup")}
           >
-            <Text style={[styles.changeBtnText, { color: colors.foreground }]}>Change</Text>
+            <Text style={[styles.changeBtnText, { color: colors.foreground }]}>{t("s_change")}</Text>
           </TouchableOpacity>
         </SettingsRow>
 
@@ -167,7 +204,7 @@ export default function SettingsScreen() {
           <SettingsRow colors={colors}>
             <Feather name="globe" size={18} color={colors.mutedForeground} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Coordinates</Text>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>{t("s_coordinates")}</Text>
               <Text style={[styles.rowValue, { color: colors.mutedForeground }]}>
                 {settings.latitude.toFixed(4)}, {settings.longitude.toFixed(4)}
               </Text>
@@ -177,10 +214,10 @@ export default function SettingsScreen() {
       </SettingsSection>
 
       {/* ── Prayer Time Offset ────────────────────────────────────────────── */}
-      <SettingsSection title="Prayer Time Adjustment" colors={colors}>
+      <SettingsSection title={t("s_prayer_adj")} colors={colors}>
         <View style={styles.insetSection}>
           <Text style={[styles.insetLabel, { color: colors.mutedForeground }]}>
-            Shift all prayer times (minutes)
+            {t("s_shift_times")}
           </Text>
           <View style={styles.chipRow}>
             {TIME_OFFSET_OPTIONS.map((offset) => (
@@ -207,13 +244,13 @@ export default function SettingsScreen() {
             ))}
           </View>
           <Text style={[styles.insetHint, { color: colors.mutedForeground }]}>
-            Use when your mosque uses slightly different times than calculated
+            {t("s_shift_hint")}
           </Text>
         </View>
       </SettingsSection>
 
       {/* ── Calculation Method ─────────────────────────────────────────────── */}
-      <SettingsSection title="Calculation Method" colors={colors}>
+      <SettingsSection title={t("s_calc_method")} colors={colors}>
         {Object.entries(CALCULATION_METHODS).map(([key, val]) => (
           <TouchableOpacity
             key={key}
@@ -239,11 +276,11 @@ export default function SettingsScreen() {
       </SettingsSection>
 
       {/* ── Notifications ─────────────────────────────────────────────────── */}
-      <SettingsSection title="Notifications" colors={colors}>
+      <SettingsSection title={t("s_notifications")} colors={colors}>
         <SettingsRow colors={colors}>
           <Feather name="bell" size={18} color={colors.primary} />
           <Text style={[styles.rowLabel, { color: colors.foreground }, { flex: 1 }]}>
-            Prayer Reminders
+            {t("s_prayer_reminders")}
           </Text>
           <Switch
             value={settings.notificationsEnabled}
@@ -256,7 +293,7 @@ export default function SettingsScreen() {
         {settings.notificationsEnabled && (
           <View style={styles.insetSection}>
             <Text style={[styles.insetLabel, { color: colors.mutedForeground }]}>
-              Reminder delay after prayer time (minutes)
+              {t("s_reminder_delay")}
             </Text>
             <View style={styles.chipRow}>
               {REMINDER_OFFSET_OPTIONS.map((offset) => (
@@ -287,11 +324,11 @@ export default function SettingsScreen() {
       </SettingsSection>
 
       {/* ── Adhan ──────────────────────────────────────────────────────────── */}
-      <SettingsSection title="Adhan (Prayer Call)" colors={colors}>
+      <SettingsSection title={t("s_adhan")} colors={colors}>
         <SettingsRow colors={colors}>
           <Feather name="volume-2" size={18} color={colors.primary} />
           <Text style={[styles.rowLabel, { color: colors.foreground }, { flex: 1 }]}>
-            Automatic Adhan
+            {t("s_auto_adhan")}
           </Text>
           <Switch
             value={adhanEnabled}
@@ -305,7 +342,7 @@ export default function SettingsScreen() {
           <>
             <View style={styles.insetSection}>
               <Text style={[styles.insetLabel, { color: colors.mutedForeground }]}>
-                Adhan Voice
+                {t("s_adhan_voice")}
               </Text>
               {(Object.entries(ADHAN_VOICE_LABELS) as [AdhanVoice, string][]).map(([key, label]) => (
                 <TouchableOpacity
@@ -330,7 +367,7 @@ export default function SettingsScreen() {
 
             <View style={styles.insetSection}>
               <Text style={[styles.insetLabel, { color: colors.mutedForeground }]}>
-                Volume
+                {t("s_volume")}
               </Text>
               <View style={styles.chipRow}>
                 {[0.2, 0.4, 0.6, 0.8, 1.0].map((vol) => (
@@ -357,7 +394,7 @@ export default function SettingsScreen() {
                 ))}
               </View>
               <Text style={[styles.insetHint, { color: colors.mutedForeground }]}>
-                Requires network for in-app playback · Notifications work offline
+                {t("s_adhan_hint")}
               </Text>
             </View>
 
@@ -366,14 +403,14 @@ export default function SettingsScreen() {
               onPress={handleTestAdhan}
             >
               <Feather name="play" size={16} color={colors.primary} />
-              <Text style={[styles.calibrateBtnText, { color: colors.primary }]}>Test Adhan</Text>
+              <Text style={[styles.calibrateBtnText, { color: colors.primary }]}>{t("s_test_adhan")}</Text>
             </TouchableOpacity>
           </>
         )}
       </SettingsSection>
 
       {/* ── Detection Sensitivity ─────────────────────────────────────────── */}
-      <SettingsSection title="Detection Sensitivity" colors={colors}>
+      <SettingsSection title={t("s_detection_sens")} colors={colors}>
         <View style={styles.insetSection}>
           <View style={styles.sensitivityRow}>
             {[1, 2, 3, 4, 5].map((s) => (
@@ -413,11 +450,11 @@ export default function SettingsScreen() {
       </SettingsSection>
 
       {/* ── Vibration ─────────────────────────────────────────────────────── */}
-      <SettingsSection title="Vibration Feedback" colors={colors}>
+      <SettingsSection title={t("s_vibration_sec")} colors={colors}>
         <SettingsRow colors={colors}>
           <Feather name="volume-2" size={18} color={colors.primary} />
           <Text style={[styles.rowLabel, { color: colors.foreground }, { flex: 1 }]}>
-            Haptic Feedback
+            {t("s_haptic")}
           </Text>
           <Switch
             value={settings.vibrationEnabled}
@@ -430,7 +467,7 @@ export default function SettingsScreen() {
         {settings.vibrationEnabled && (
           <View style={styles.insetSection}>
             <Text style={[styles.insetLabel, { color: colors.mutedForeground }]}>
-              Pattern strength (used while phone is in pocket)
+              {t("s_vibration_pattern")}
             </Text>
             <View style={styles.chipRow}>
               {(["low", "medium", "high"] as const).map((s) => (
@@ -465,14 +502,14 @@ export default function SettingsScreen() {
               ))}
             </View>
             <Text style={[styles.insetHint, { color: colors.mutedForeground }]}>
-              Short = correct posture   Long = adjust posture
+              {t("s_vibration_hint")}
             </Text>
           </View>
         )}
       </SettingsSection>
 
       {/* ── Motion Calibration ────────────────────────────────────────────── */}
-      <SettingsSection title="Motion Calibration" colors={colors}>
+      <SettingsSection title={t("s_motion_calib")} colors={colors}>
         <SettingsRow colors={colors}>
           <Feather
             name="activity"
@@ -480,25 +517,24 @@ export default function SettingsScreen() {
             color={calibration ? colors.primary : colors.mutedForeground}
           />
           <View style={{ flex: 1 }}>
-            <Text style={[styles.rowLabel, { color: colors.foreground }]}>Calibration Status</Text>
+            <Text style={[styles.rowLabel, { color: colors.foreground }]}>{t("s_calib_status")}</Text>
             <Text style={[styles.rowValue, { color: colors.mutedForeground }]}>
               {calibration
-                ? `Calibrated ${new Date(calibration.calibratedAt).toLocaleDateString()}`
-                : "Not calibrated (using defaults)"}
+                ? `${t("s_calibrated_at")} ${new Date(calibration.calibratedAt).toLocaleDateString()}`
+                : t("s_not_calibrated")}
             </Text>
           </View>
         </SettingsRow>
 
-        {/* Pocket side toggle */}
         {calibration && (
           <SettingsRow colors={colors}>
             <Feather name="smartphone" size={18} color={colors.primary} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Phone Pocket</Text>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>{t("s_pocket_side")}</Text>
               <Text style={[styles.rowValue, { color: colors.mutedForeground }]}>
-                {calibration.pocketSide === "left"  ? "Left trouser pocket" :
-                 calibration.pocketSide === "right" ? "Right trouser pocket" :
-                                                      "Not set"}
+                {calibration.pocketSide === "left"  ? t("s_left_pocket")  :
+                 calibration.pocketSide === "right" ? t("s_right_pocket") :
+                                                      t("s_not_set")}
               </Text>
             </View>
             <View style={styles.pocketToggleRow}>
@@ -510,8 +546,8 @@ export default function SettingsScreen() {
                     style={[
                       styles.pocketBtn,
                       {
-                        backgroundColor: active ? colors.primary        : colors.secondary,
-                        borderColor:     active ? colors.primary        : colors.border,
+                        backgroundColor: active ? colors.primary  : colors.secondary,
+                        borderColor:     active ? colors.primary  : colors.border,
                       },
                     ]}
                     onPress={async () => {
@@ -533,17 +569,16 @@ export default function SettingsScreen() {
           onPress={() => router.push("/onboarding/calibration")}
         >
           <Feather name="refresh-cw" size={16} color={colors.primary} />
-          <Text style={[styles.calibrateBtnText, { color: colors.primary }]}>Re-calibrate</Text>
+          <Text style={[styles.calibrateBtnText, { color: colors.primary }]}>{t("s_recalibrate")}</Text>
         </TouchableOpacity>
       </SettingsSection>
 
       {/* ── Azkar Overlay ─────────────────────────────────────────────────── */}
-      <SettingsSection title="Azkar Reminder" colors={colors}>
-        {/* Master toggle */}
+      <SettingsSection title={t("s_azkar")} colors={colors}>
         <SettingsRow colors={colors}>
           <Text style={{ fontSize: 18 }}>🤲</Text>
           <Text style={[styles.rowLabel, { color: colors.foreground, flex: 1 }]}>
-            Floating Azkar Overlay
+            {t("s_azkar_overlay")}
           </Text>
           <Switch
             value={azkar.enabled}
@@ -558,23 +593,23 @@ export default function SettingsScreen() {
             {/* Frequency */}
             <View style={styles.insetSection}>
               <Text style={[styles.insetLabel, { color: colors.mutedForeground }]}>
-                Show every (minutes)
+                {t("s_show_every")}
               </Text>
               <View style={styles.chipRow}>
-                {FREQUENCY_OPTIONS.map((m) => (
+                {FREQUENCY_OPTIONS.map((min) => (
                   <TouchableOpacity
-                    key={m}
+                    key={min}
                     style={[
                       styles.chip,
                       {
-                        backgroundColor: azkar.frequencyMinutes === m ? colors.primary : colors.secondary,
-                        borderColor:     azkar.frequencyMinutes === m ? colors.primary : colors.border,
+                        backgroundColor: azkar.intervalMinutes === min ? colors.primary : colors.secondary,
+                        borderColor:     azkar.intervalMinutes === min ? colors.primary : colors.border,
                       },
                     ]}
-                    onPress={() => updateAzkar({ frequencyMinutes: m })}
+                    onPress={() => updateAzkar({ intervalMinutes: min })}
                   >
-                    <Text style={[styles.chipText, { color: azkar.frequencyMinutes === m ? colors.primaryForeground : colors.mutedForeground }]}>
-                      {m}
+                    <Text style={[styles.chipText, { color: azkar.intervalMinutes === min ? colors.primaryForeground : colors.mutedForeground }]}>
+                      {min}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -584,23 +619,23 @@ export default function SettingsScreen() {
             {/* Display duration */}
             <View style={styles.insetSection}>
               <Text style={[styles.insetLabel, { color: colors.mutedForeground }]}>
-                Display duration (seconds)
+                {t("s_display_dur")}
               </Text>
               <View style={styles.chipRow}>
-                {DISPLAY_OPTIONS.map((s) => (
+                {DISPLAY_OPTIONS.map((sec) => (
                   <TouchableOpacity
-                    key={s}
+                    key={sec}
                     style={[
                       styles.chip,
                       {
-                        backgroundColor: azkar.displaySeconds === s ? colors.primary : colors.secondary,
-                        borderColor:     azkar.displaySeconds === s ? colors.primary : colors.border,
+                        backgroundColor: azkar.displaySeconds === sec ? colors.primary : colors.secondary,
+                        borderColor:     azkar.displaySeconds === sec ? colors.primary : colors.border,
                       },
                     ]}
-                    onPress={() => updateAzkar({ displaySeconds: s })}
+                    onPress={() => updateAzkar({ displaySeconds: sec })}
                   >
-                    <Text style={[styles.chipText, { color: azkar.displaySeconds === s ? colors.primaryForeground : colors.mutedForeground }]}>
-                      {s}s
+                    <Text style={[styles.chipText, { color: azkar.displaySeconds === sec ? colors.primaryForeground : colors.mutedForeground }]}>
+                      {sec}s
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -610,23 +645,23 @@ export default function SettingsScreen() {
             {/* Font size */}
             <View style={styles.insetSection}>
               <Text style={[styles.insetLabel, { color: colors.mutedForeground }]}>
-                Arabic text size
+                {t("s_font_size")}
               </Text>
               <View style={styles.chipRow}>
-                {(["small", "medium", "large"] as const).map((size) => (
+                {[14, 16, 18, 20, 22].map((sz) => (
                   <TouchableOpacity
-                    key={size}
+                    key={sz}
                     style={[
                       styles.chip,
                       {
-                        backgroundColor: azkar.fontSize === size ? colors.primary : colors.secondary,
-                        borderColor:     azkar.fontSize === size ? colors.primary : colors.border,
+                        backgroundColor: azkar.fontSize === sz ? colors.primary : colors.secondary,
+                        borderColor:     azkar.fontSize === sz ? colors.primary : colors.border,
                       },
                     ]}
-                    onPress={() => updateAzkar({ fontSize: size })}
+                    onPress={() => updateAzkar({ fontSize: sz })}
                   >
-                    <Text style={[styles.chipText, { color: azkar.fontSize === size ? colors.primaryForeground : colors.mutedForeground }]}>
-                      {size.charAt(0).toUpperCase() + size.slice(1)}
+                    <Text style={[styles.chipText, { color: azkar.fontSize === sz ? colors.primaryForeground : colors.mutedForeground }]}>
+                      {sz}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -636,7 +671,7 @@ export default function SettingsScreen() {
             {/* Position */}
             <View style={styles.insetSection}>
               <Text style={[styles.insetLabel, { color: colors.mutedForeground }]}>
-                Default screen side
+                {t("s_screen_side")}
               </Text>
               <View style={styles.chipRow}>
                 {(["left", "right"] as const).map((side) => (
@@ -652,20 +687,20 @@ export default function SettingsScreen() {
                     onPress={() => updateAzkar({ position: side })}
                   >
                     <Text style={[styles.chipText, { color: azkar.position === side ? colors.primaryForeground : colors.mutedForeground }]}>
-                      {side === "left" ? "◀ Left" : "Right ▶"}
+                      {side === "left" ? t("s_side_left") : t("s_side_right")}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
               <Text style={[styles.insetHint, { color: colors.mutedForeground }]}>
-                You can also drag the widget to either side
+                {t("s_drag_hint")}
               </Text>
             </View>
 
             {/* Opacity */}
             <View style={styles.insetSection}>
               <Text style={[styles.insetLabel, { color: colors.mutedForeground }]}>
-                Opacity
+                {t("s_opacity")}
               </Text>
               <View style={styles.chipRow}>
                 {[0.6, 0.75, 0.9, 1.0].map((op) => (
@@ -692,7 +727,7 @@ export default function SettingsScreen() {
             <SettingsRow colors={colors}>
               <Feather name="wind" size={18} color={colors.primary} />
               <Text style={[styles.rowLabel, { color: colors.foreground, flex: 1 }]}>
-                Soft vibration on appear
+                {t("s_soft_vib")}
               </Text>
               <Switch
                 value={azkar.vibration}
@@ -707,10 +742,10 @@ export default function SettingsScreen() {
               <Feather name="bell" size={18} color={colors.primary} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.rowLabel, { color: colors.foreground }]}>
-                  Background Reminders
+                  {t("s_bg_reminders")}
                 </Text>
                 <Text style={[styles.rowValue, { color: colors.mutedForeground }]}>
-                  Notifications when app is closed
+                  {t("s_bg_reminders_desc")}
                 </Text>
               </View>
               <Switch
@@ -727,27 +762,59 @@ export default function SettingsScreen() {
               onPress={showNow}
             >
               <Text style={{ fontSize: 14 }}>🤲</Text>
-              <Text style={[styles.calibrateBtnText, { color: colors.primary }]}>Preview Widget Now</Text>
+              <Text style={[styles.calibrateBtnText, { color: colors.primary }]}>{t("s_preview_widget")}</Text>
             </TouchableOpacity>
           </>
         )}
       </SettingsSection>
 
+      {/* ── Language ──────────────────────────────────────────────────────── */}
+      <SettingsSection title={t("s_language")} colors={colors}>
+        <View style={styles.insetSection}>
+          <View style={[styles.chipRow, { gap: 10 }]}>
+            {(["en", "ar"] as const).map((lang) => {
+              const isActive = (settings.language ?? "en") === lang;
+              return (
+                <TouchableOpacity
+                  key={lang}
+                  style={[
+                    styles.chip,
+                    {
+                      flex: 1,
+                      paddingVertical: 10,
+                      alignItems: "center",
+                      backgroundColor: isActive ? colors.primary : colors.secondary,
+                      borderColor:     isActive ? colors.primary : colors.border,
+                    },
+                  ]}
+                  onPress={() => handleLanguageChange(lang)}
+                >
+                  <Text style={[styles.chipText, { color: isActive ? colors.primaryForeground : colors.mutedForeground }]}>
+                    {lang === "en" ? "English" : "العربية"}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <Text style={[styles.insetHint, { color: colors.mutedForeground }]}>
+            {t("s_language_note")}
+          </Text>
+        </View>
+      </SettingsSection>
+
       {/* ── About ─────────────────────────────────────────────────────────── */}
-      <SettingsSection title="About" colors={colors}>
+      <SettingsSection title={t("s_about")} colors={colors}>
         <View style={[styles.aboutItem, { borderColor: colors.border }]}>
-          <Text style={[styles.aboutLabel, { color: colors.mutedForeground }]}>Version</Text>
+          <Text style={[styles.aboutLabel, { color: colors.mutedForeground }]}>{t("s_version")}</Text>
           <Text style={[styles.aboutValue, { color: colors.foreground }]}>1.0.0</Text>
         </View>
         <View style={[styles.aboutItem, { borderColor: colors.border }]}>
-          <Text style={[styles.aboutLabel, { color: colors.mutedForeground }]}>Privacy</Text>
-          <Text style={[styles.aboutValue, { color: colors.foreground }]}>No data collected</Text>
+          <Text style={[styles.aboutLabel, { color: colors.mutedForeground }]}>{t("s_privacy")}</Text>
+          <Text style={[styles.aboutValue, { color: colors.foreground }]}>{t("s_no_data")}</Text>
         </View>
         <View style={[styles.aboutItem, { borderColor: colors.border }]}>
-          <Text style={[styles.aboutLabel, { color: colors.mutedForeground }]}>Sensors</Text>
-          <Text style={[styles.aboutValue, { color: colors.foreground }]}>
-            Accelerometer + Gyroscope
-          </Text>
+          <Text style={[styles.aboutLabel, { color: colors.mutedForeground }]}>{t("s_sensors")}</Text>
+          <Text style={[styles.aboutValue, { color: colors.foreground }]}>{t("s_accel_gyro")}</Text>
         </View>
       </SettingsSection>
 
@@ -760,7 +827,7 @@ export default function SettingsScreen() {
         onPress={resetOnboarding}
       >
         <Feather name="refresh-ccw" size={16} color={colors.destructive} />
-        <Text style={[styles.resetText, { color: colors.destructive }]}>Reset Setup</Text>
+        <Text style={[styles.resetText, { color: colors.destructive }]}>{t("s_reset")}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -778,7 +845,7 @@ function SettingsSection({
   return (
     <View style={sectionStyles.wrapper}>
       <Text style={[sectionStyles.title, { color: colors.mutedForeground }]}>
-        {title.toUpperCase()}
+        {title}
       </Text>
       <View
         style={[sectionStyles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -871,6 +938,6 @@ const styles = StyleSheet.create({
   aboutLabel: { fontSize: 14 },
   aboutValue: { fontSize: 14, fontWeight: "500" },
 
-  resetBtn:   { borderRadius: 14, borderWidth: 1, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 8 },
-  resetText:  { fontSize: 15, fontWeight: "600" },
+  resetBtn:  { borderRadius: 14, borderWidth: 1, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 8 },
+  resetText: { fontSize: 15, fontWeight: "600" },
 });

@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WeeklyChart } from "@/components/WeeklyChart";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { useTranslation } from "@/hooks/useTranslation";
 import {
   PRAYER_NAMES,
   formatDate,
@@ -22,6 +23,8 @@ import {
   SessionQuality,
   TrainingSession,
 } from "@/lib/trainingStorage";
+
+const TAB_H = Platform.OS === "web" ? 84 : 62;
 
 interface MissedStat {
   name: string;
@@ -53,12 +56,13 @@ function fmtRelativeDate(ts: number): string {
 }
 
 export default function StatsScreen() {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
+  const colors  = useColors();
+  const insets  = useSafeAreaInsets();
+  const { t }   = useTranslation();
   const { weeklyStats, streak } = useApp();
-  const [missedStats, setMissedStats]       = useState<MissedStat[]>([]);
-  const [totalDetected, setTotalDetected]   = useState(0);
-  const [totalPossible, setTotalPossible]   = useState(0);
+  const [missedStats, setMissedStats]           = useState<MissedStat[]>([]);
+  const [totalDetected, setTotalDetected]       = useState(0);
+  const [totalPossible, setTotalPossible]       = useState(0);
   const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>([]);
 
   useEffect(() => {
@@ -110,35 +114,31 @@ export default function StatsScreen() {
     ? Math.round(Math.max(...trainingSessions.map(s => s.qualityScore)) * 100)
     : 0;
   const avgScore = totalSessions > 0
-    ? Math.round(trainingSessions.reduce((s, t) => s + t.qualityScore, 0) / totalSessions * 100)
+    ? Math.round(trainingSessions.reduce((s, ts) => s + ts.qualityScore, 0) / totalSessions * 100)
     : 0;
 
-  const paddingBottom =
-    Platform.OS === "web" ? insets.bottom + 84 : insets.bottom + 80;
+  const paddingBottom = TAB_H + insets.bottom;
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={[
         styles.container,
-        {
-          paddingTop: insets.top + (Platform.OS === "web" ? 67 : 16),
-          paddingBottom,
-        },
+        { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 16), paddingBottom },
       ]}
       showsVerticalScrollIndicator={false}
     >
       <Text style={[styles.title, { color: colors.foreground }]}>
-        Statistics
+        {t("statistics")}
       </Text>
       <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-        Last 7 days
+        {t("last_7_days")}
       </Text>
 
       {/* Key stats row */}
       <View style={styles.statsRow}>
         <StatBox
-          label="Streak"
+          label={t("streak_lbl")}
           value={`${streak}d`}
           icon="zap"
           color={colors.gold}
@@ -146,7 +146,7 @@ export default function StatsScreen() {
           colors={colors}
         />
         <StatBox
-          label="This Week"
+          label={t("this_week")}
           value={`${weeklyTotal}`}
           icon="check-circle"
           color={colors.primary}
@@ -154,7 +154,7 @@ export default function StatsScreen() {
           colors={colors}
         />
         <StatBox
-          label="Consistency"
+          label={t("consistency")}
           value={`${consistency}%`}
           icon="trending-up"
           color={colors.accent}
@@ -167,17 +167,9 @@ export default function StatsScreen() {
       <WeeklyChart stats={weeklyStats} />
 
       {/* Most missed prayers */}
-      <View
-        style={[
-          styles.section,
-          {
-            backgroundColor: colors.card,
-            borderColor: colors.border,
-          },
-        ]}
-      >
+      <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-          Prayer Performance (7 days)
+          {t("prayer_perf_7d")}
         </Text>
 
         {missedStats.map((s) => {
@@ -186,39 +178,25 @@ export default function StatsScreen() {
 
           return (
             <View key={s.name} style={styles.prayerStatRow}>
-              <Text
-                style={[styles.prayerStatName, { color: colors.foreground }]}
-              >
+              <Text style={[styles.prayerStatName, { color: colors.foreground }]}>
                 {s.name}
               </Text>
               <View style={styles.barContainer}>
-                <View
-                  style={[
-                    styles.barBg,
-                    { backgroundColor: colors.border },
-                  ]}
-                >
+                <View style={[styles.barBg, { backgroundColor: colors.border }]}>
                   <View
                     style={[
                       styles.barProgress,
                       {
                         width: `${pct * 100}%`,
                         backgroundColor:
-                          pct >= 0.8
-                            ? colors.primary
-                            : pct >= 0.5
-                            ? colors.warning
-                            : colors.error,
+                          pct >= 0.8 ? colors.primary :
+                          pct >= 0.5 ? colors.warning  :
+                                       colors.error,
                       },
                     ]}
                   />
                 </View>
-                <Text
-                  style={[
-                    styles.prayerStatCount,
-                    { color: colors.mutedForeground },
-                  ]}
-                >
+                <Text style={[styles.prayerStatCount, { color: colors.mutedForeground }]}>
                   {detectedCount}/7
                 </Text>
               </View>
@@ -235,10 +213,10 @@ export default function StatsScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>
-              Training History
+              {t("training_history")}
             </Text>
             <Text style={[th.subLabel, { color: colors.mutedForeground }]}>
-              Phone calibration sessions
+              {t("phone_calib_sess")}
             </Text>
           </View>
         </View>
@@ -246,9 +224,9 @@ export default function StatsScreen() {
         {totalSessions === 0 ? (
           <View style={th.emptyBox}>
             <Feather name="cpu" size={28} color={colors.mutedForeground} />
-            <Text style={[th.emptyTitle, { color: colors.foreground }]}>No sessions yet</Text>
+            <Text style={[th.emptyTitle, { color: colors.foreground }]}>{t("no_sessions")}</Text>
             <Text style={[th.emptyDesc, { color: colors.mutedForeground }]}>
-              Use "Train Your Phone" on the home screen to personalize detection.
+              {t("use_train_phone")}
             </Text>
           </View>
         ) : (
@@ -257,25 +235,25 @@ export default function StatsScreen() {
             <View style={th.summaryRow}>
               <View style={[th.summaryBox, { backgroundColor: colors.background }]}>
                 <Text style={[th.summaryVal, { color: colors.foreground }]}>{totalSessions}</Text>
-                <Text style={[th.summaryLbl, { color: colors.mutedForeground }]}>Sessions</Text>
+                <Text style={[th.summaryLbl, { color: colors.mutedForeground }]}>{t("sessions_lbl")}</Text>
               </View>
               <View style={[th.summaryBox, { backgroundColor: colors.background }]}>
                 <Text style={[th.summaryVal, { color: "#22c55e" }]}>{bestScore}%</Text>
-                <Text style={[th.summaryLbl, { color: colors.mutedForeground }]}>Best</Text>
+                <Text style={[th.summaryLbl, { color: colors.mutedForeground }]}>{t("best_lbl")}</Text>
               </View>
               <View style={[th.summaryBox, { backgroundColor: colors.background }]}>
                 <Text style={[th.summaryVal, { color: "#3b82f6" }]}>{avgScore}%</Text>
-                <Text style={[th.summaryLbl, { color: colors.mutedForeground }]}>Average</Text>
+                <Text style={[th.summaryLbl, { color: colors.mutedForeground }]}>{t("average_lbl")}</Text>
               </View>
             </View>
 
             {/* Quality timeline dots */}
             <View style={th.timelineWrap}>
               <Text style={[th.timelineLabel, { color: colors.mutedForeground }]}>
-                Quality over time (newest right)
+                {t("quality_over_time")}
               </Text>
               <View style={th.dotsRow}>
-                {trainingSessions.slice().reverse().map((s, i) => (
+                {trainingSessions.slice().reverse().map((s) => (
                   <View
                     key={s.id}
                     style={[
@@ -295,10 +273,7 @@ export default function StatsScreen() {
             {/* Session list (most recent first) */}
             <View style={th.sessionList}>
               {trainingSessions.slice(0, 8).map((s) => (
-                <View
-                  key={s.id}
-                  style={[th.sessionRow, { borderBottomColor: colors.border }]}
-                >
+                <View key={s.id} style={[th.sessionRow, { borderBottomColor: colors.border }]}>
                   <View style={[th.qualityDot, { backgroundColor: QUALITY_COLOR[s.quality] }]} />
                   <View style={{ flex: 1 }}>
                     <View style={th.sessionTopRow}>
@@ -314,10 +289,7 @@ export default function StatsScreen() {
                         <View
                           style={[
                             th.scoreBarFill,
-                            {
-                              width: `${s.overallScore}%`,
-                              backgroundColor: QUALITY_COLOR[s.quality],
-                            },
+                            { width: `${s.overallScore}%`, backgroundColor: QUALITY_COLOR[s.quality] },
                           ]}
                         />
                       </View>
@@ -326,17 +298,8 @@ export default function StatsScreen() {
                       </Text>
                     </View>
                   </View>
-                  <View
-                    style={[
-                      th.iconChip,
-                      { backgroundColor: QUALITY_COLOR[s.quality] + "20" },
-                    ]}
-                  >
-                    <Feather
-                      name={QUALITY_ICON[s.quality] as any}
-                      size={13}
-                      color={QUALITY_COLOR[s.quality]}
-                    />
+                  <View style={[th.iconChip, { backgroundColor: QUALITY_COLOR[s.quality] + "20" }]}>
+                    <Feather name={QUALITY_ICON[s.quality] as any} size={13} color={QUALITY_COLOR[s.quality]} />
                   </View>
                 </View>
               ))}
@@ -344,7 +307,7 @@ export default function StatsScreen() {
 
             {totalSessions > 8 && (
               <Text style={[th.moreLabel, { color: colors.mutedForeground }]}>
-                +{totalSessions - 8} older sessions stored
+                +{totalSessions - 8} {t("older_sessions")}
               </Text>
             )}
           </>
@@ -355,259 +318,76 @@ export default function StatsScreen() {
 }
 
 function StatBox({
-  label,
-  value,
-  icon,
-  color,
-  bg,
-  colors,
+  label, value, icon, color, bg, colors,
 }: {
-  label: string;
-  value: string;
-  icon: any;
-  color: string;
-  bg: string;
-  colors: any;
+  label: string; value: string; icon: any; color: string; bg: string; colors: any;
 }) {
   return (
-    <View
-      style={[
-        statBoxStyles.container,
-        {
-          backgroundColor: colors.card,
-          borderColor: colors.border,
-        },
-      ]}
-    >
+    <View style={[statBoxStyles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={[statBoxStyles.iconWrap, { backgroundColor: bg }]}>
         <Feather name={icon} size={16} color={color} />
       </View>
-      <Text style={[statBoxStyles.value, { color: colors.foreground }]}>
-        {value}
-      </Text>
-      <Text style={[statBoxStyles.label, { color: colors.mutedForeground }]}>
-        {label}
-      </Text>
+      <Text style={[statBoxStyles.value, { color: colors.foreground }]}>{value}</Text>
+      <Text style={[statBoxStyles.label, { color: colors.mutedForeground }]}>{label}</Text>
     </View>
   );
 }
 
 const statBoxStyles = StyleSheet.create({
   container: {
-    flex: 1,
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-    alignItems: "center",
-    gap: 4,
+    flex: 1, borderRadius: 14, borderWidth: 1, padding: 14,
+    alignItems: "center", gap: 4,
   },
   iconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
+    width: 32, height: 32, borderRadius: 16,
+    alignItems: "center", justifyContent: "center", marginBottom: 4,
   },
-  value: {
-    fontSize: 22,
-    fontWeight: "700",
-    letterSpacing: -0.5,
-  },
-  label: {
-    fontSize: 11,
-  },
+  value: { fontSize: 22, fontWeight: "700", letterSpacing: -0.5 },
+  label: { fontSize: 11 },
 });
 
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 20,
-    gap: 16,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: "700",
-  },
-  subtitle: {
-    fontSize: 13,
-    marginTop: -8,
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  section: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    gap: 14,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  prayerStatRow: {
-    gap: 6,
-  },
-  prayerStatName: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  barContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  barBg: {
-    flex: 1,
-    height: 6,
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  barProgress: {
-    height: "100%",
-    borderRadius: 3,
-  },
-  prayerStatCount: {
-    fontSize: 11,
-    width: 28,
-    textAlign: "right",
-  },
+  container:      { paddingHorizontal: 20, gap: 16 },
+  title:          { fontSize: 26, fontWeight: "700" },
+  subtitle:       { fontSize: 13, marginTop: -8 },
+  statsRow:       { flexDirection: "row", gap: 10 },
+  section:        { borderRadius: 16, borderWidth: 1, padding: 16, gap: 14 },
+  sectionTitle:   { fontSize: 14, fontWeight: "600", marginBottom: 4 },
+  prayerStatRow:  { gap: 6 },
+  prayerStatName: { fontSize: 13, fontWeight: "500" },
+  barContainer:   { flexDirection: "row", alignItems: "center", gap: 8 },
+  barBg:          { flex: 1, height: 6, borderRadius: 3, overflow: "hidden" },
+  barProgress:    { height: "100%", borderRadius: 3 },
+  prayerStatCount:{ fontSize: 11, width: 28, textAlign: "right" },
 });
 
 const th = StyleSheet.create({
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  iconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  subLabel: {
-    fontSize: 11,
-    marginTop: 1,
-  },
-  emptyBox: {
-    alignItems: "center",
-    paddingVertical: 24,
-    gap: 8,
-  },
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  emptyDesc: {
-    fontSize: 12,
-    textAlign: "center",
-    lineHeight: 18,
-    maxWidth: 260,
-  },
-  summaryRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  summaryBox: {
-    flex: 1,
-    borderRadius: 10,
-    padding: 10,
-    alignItems: "center",
-    gap: 2,
-  },
-  summaryVal: {
-    fontSize: 18,
-    fontWeight: "700",
-    letterSpacing: -0.5,
-  },
-  summaryLbl: {
-    fontSize: 10,
-  },
-  timelineWrap: {
-    gap: 6,
-  },
-  timelineLabel: {
-    fontSize: 11,
-  },
-  dotsRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 3,
-    height: 40,
-  },
-  timelineDot: {
-    width: 8,
-    borderRadius: 4,
-    minHeight: 8,
-  },
-  dotsAxisRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  axisLabel: {
-    fontSize: 9,
-  },
-  sessionList: {
-    gap: 0,
-  },
-  sessionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 9,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  qualityDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  sessionTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 4,
-  },
-  sessionQuality: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  sessionTime: {
-    fontSize: 11,
-  },
-  scoreBarWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  scoreBarBg: {
-    flex: 1,
-    height: 5,
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  scoreBarFill: {
-    height: "100%",
-    borderRadius: 3,
-  },
-  scoreNum: {
-    fontSize: 10,
-    width: 26,
-    textAlign: "right",
-  },
-  iconChip: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  moreLabel: {
-    fontSize: 11,
-    textAlign: "center",
-    paddingTop: 4,
-  },
+  headerRow:    { flexDirection: "row", alignItems: "center", gap: 10 },
+  iconWrap:     { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  subLabel:     { fontSize: 11, marginTop: 1 },
+  emptyBox:     { alignItems: "center", paddingVertical: 24, gap: 8 },
+  emptyTitle:   { fontSize: 14, fontWeight: "600" },
+  emptyDesc:    { fontSize: 12, textAlign: "center", lineHeight: 18, maxWidth: 260 },
+  summaryRow:   { flexDirection: "row", gap: 8 },
+  summaryBox:   { flex: 1, borderRadius: 10, padding: 10, alignItems: "center", gap: 2 },
+  summaryVal:   { fontSize: 18, fontWeight: "700", letterSpacing: -0.5 },
+  summaryLbl:   { fontSize: 10 },
+  timelineWrap: { gap: 6 },
+  timelineLabel:{ fontSize: 11 },
+  dotsRow:      { flexDirection: "row", alignItems: "flex-end", gap: 3, height: 40 },
+  timelineDot:  { width: 8, borderRadius: 4, minHeight: 8 },
+  dotsAxisRow:  { flexDirection: "row", justifyContent: "space-between" },
+  axisLabel:    { fontSize: 9 },
+  sessionList:  { gap: 0 },
+  sessionRow:   { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth },
+  qualityDot:   { width: 8, height: 8, borderRadius: 4 },
+  sessionTopRow:{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+  sessionQuality:{ fontSize: 12, fontWeight: "600" },
+  sessionTime:  { fontSize: 11 },
+  scoreBarWrap: { flexDirection: "row", alignItems: "center", gap: 6 },
+  scoreBarBg:   { flex: 1, height: 5, borderRadius: 3, overflow: "hidden" },
+  scoreBarFill: { height: "100%", borderRadius: 3 },
+  scoreNum:     { fontSize: 10, width: 26, textAlign: "right" },
+  iconChip:     { width: 26, height: 26, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  moreLabel:    { fontSize: 11, textAlign: "center", paddingTop: 4 },
 });

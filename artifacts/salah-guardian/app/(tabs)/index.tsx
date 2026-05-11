@@ -22,8 +22,10 @@ import { StreakCard } from "@/components/StreakCard";
 import { TrainingModal } from "@/components/TrainingModal";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { useTranslation } from "@/hooks/useTranslation";
 
 const ALERT_THRESHOLD_MS = 5 * 60 * 1000;
+const TAB_H = Platform.OS === "web" ? 84 : 62;
 
 const RAKAAT_MAP: Record<string, number> = {
   Fajr: 2, Dhuhr: 4, Asr: 4, Maghrib: 3, Isha: 4,
@@ -34,8 +36,9 @@ function getRakaatCount(prayerName: string): number {
 }
 
 export default function HomeScreen() {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
+  const colors  = useColors();
+  const insets  = useSafeAreaInsets();
+  const { t }   = useTranslation();
 
   const {
     settings,
@@ -57,15 +60,12 @@ export default function HomeScreen() {
   const [trainingVisible, setTrainingVisible]   = useState(false);
   const [refreshing, setRefreshing]             = useState(false);
 
-  // Banner state: track which prayer triggered it and whether user dismissed it
   const [bannerPrayer, setBannerPrayer]       = useState<string | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const prevNextPrayerRef                     = useRef<string>("");
 
-  // Show banner when next prayer is within 5 minutes
   useEffect(() => {
     if (!nextPrayer) return;
-    // New prayer approaching — reset dismissed flag
     if (nextPrayer !== prevNextPrayerRef.current) {
       prevNextPrayerRef.current = nextPrayer;
       setBannerDismissed(false);
@@ -75,7 +75,6 @@ export default function HomeScreen() {
     }
   }, [timeRemaining, nextPrayer]);
 
-  // Has the alerted prayer already been detected today?
   const bannerPrayerDetected =
     bannerPrayer != null &&
     prayerStatuses.find((p) => p.name === bannerPrayer)?.detected === true;
@@ -106,18 +105,22 @@ export default function HomeScreen() {
     }
   }
 
-  const paddingBottom = Platform.OS === "web" ? insets.bottom + 84 : insets.bottom + 80;
+  const paddingBottom = TAB_H + insets.bottom;
 
   if (isLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
         <Feather name="moon" size={32} color={colors.primary} />
         <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
-          Calculating prayer times…
+          {t("calculating")}
         </Text>
       </View>
     );
   }
+
+  const greetingText = userName
+    ? `${t("greeting")}, ${userName} 👋`
+    : `${t("greeting")} 👋`;
 
   return (
     <>
@@ -136,10 +139,10 @@ export default function HomeScreen() {
         <View style={styles.greetingRow}>
           <View>
             <Text style={[styles.greetingMain, { color: colors.foreground }]}>
-              {userName ? `Assalamu Alaikum, ${userName}` : "Assalamu Alaikum"} 👋
+              {greetingText}
             </Text>
             <Text style={[styles.greetingSub, { color: colors.mutedForeground }]}>
-              May your prayers be accepted
+              {t("prayers_accepted")}
             </Text>
           </View>
           <TouchableOpacity
@@ -170,17 +173,14 @@ export default function HomeScreen() {
 
         {/* Qibla compass */}
         {settings.latitude && settings.longitude && (
-          <QiblaCard
-            userLat={settings.latitude}
-            userLng={settings.longitude}
-          />
+          <QiblaCard userLat={settings.latitude} userLng={settings.longitude} />
         )}
 
         {/* Today's prayers */}
         {prayerStatuses.length > 0 ? (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
-              TODAY'S PRAYERS
+              {t("todays_prayers")}
             </Text>
             <PrayerTimesList statuses={prayerStatuses} currentPrayer={currentPrayer} />
           </View>
@@ -188,7 +188,7 @@ export default function HomeScreen() {
           <View style={[styles.noLocationCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Feather name="map-pin" size={24} color={colors.mutedForeground} />
             <Text style={[styles.noLocationText, { color: colors.mutedForeground }]}>
-              Set your location in Settings to see prayer times
+              {t("no_location")}
             </Text>
           </View>
         )}
@@ -201,7 +201,7 @@ export default function HomeScreen() {
         >
           <Feather name="activity" size={22} color={colors.primaryForeground} />
           <Text style={[styles.detectBtnText, { color: colors.primaryForeground }]}>
-            Start Prayer Detection
+            {t("start_detection")}
           </Text>
         </TouchableOpacity>
 
@@ -216,17 +216,17 @@ export default function HomeScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.trainTitle, { color: colors.foreground }]}>
-              Train Your Phone
+              {t("train_phone")}
             </Text>
             <Text style={[styles.trainDesc, { color: colors.mutedForeground }]}>
-              Teach Imam your body positions for better accuracy
+              {t("train_desc")}
             </Text>
           </View>
           <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
         </TouchableOpacity>
 
         <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-          Place your phone in your pocket before starting prayer
+          {t("pocket_hint")}
         </Text>
       </ScrollView>
 
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
     width: 38, height: 38, borderRadius: 19, borderWidth: 1,
     alignItems: "center", justifyContent: "center",
   },
-  section: { gap: 8 },
+  section:      { gap: 8 },
   sectionTitle: { fontSize: 11, fontWeight: "600", letterSpacing: 0.8, paddingLeft: 4 },
 
   noLocationCard: {

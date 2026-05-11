@@ -43,6 +43,8 @@ export interface AppSettings {
   invalidPostureAlerts: boolean;
   /** User's preferred name for personalized greeting */
   userName?: string;
+  /** UI language */
+  language?: "en" | "ar";
 }
 
 export interface PrayerRecord {

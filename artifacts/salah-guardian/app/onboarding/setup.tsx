@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { useTranslation } from "@/hooks/useTranslation";
 import {
   CALCULATION_METHODS,
   CalculationMethod,
@@ -43,6 +44,7 @@ type Step = "name" | "location" | "method";
 export default function SetupScreen() {
   const colors  = useColors();
   const insets  = useSafeAreaInsets();
+  const { t }   = useTranslation();
   const { updateSettings } = useApp();
 
   const [step,           setStep]           = useState<Step>("name");
@@ -73,7 +75,7 @@ export default function SetupScreen() {
       });
       setLat(loc.coords.latitude);
       setLng(loc.coords.longitude);
-      setCityName("Current Location");
+      setCityName(t("current_location"));
       setStep("method");
     } catch {
       Alert.alert("Error", "Could not get location. Please select a city.");
@@ -135,26 +137,22 @@ export default function SetupScreen() {
         ))}
       </View>
 
-      {/* ── Step 1: Name ───────────────────────────────────────────────────── */}
+      {/* ── Step 1: Name ─────────────────────────────────────────────────── */}
       {step === "name" && (
         <>
           <Text style={[styles.heading, { color: colors.foreground }]}>
-            Assalamu Alaikum! 👋
+            {t("setup_greeting")}
           </Text>
           <Text style={[styles.subheading, { color: colors.mutedForeground }]}>
-            What should we call you? (optional)
+            {t("setup_name_sub")}
           </Text>
 
           <TextInput
             style={[
               styles.nameInput,
-              {
-                backgroundColor: colors.card,
-                borderColor:     colors.border,
-                color:           colors.foreground,
-              },
+              { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground },
             ]}
-            placeholder="Your name or nickname"
+            placeholder={t("setup_name_ph")}
             placeholderTextColor={colors.mutedForeground}
             value={userName}
             onChangeText={setUserName}
@@ -169,7 +167,7 @@ export default function SetupScreen() {
             onPress={() => setStep("location")}
           >
             <Text style={[styles.nextBtnText, { color: colors.primaryForeground }]}>
-              {userName.trim() ? "Continue" : "Skip"}
+              {userName.trim() ? t("continue_btn") : t("skip_btn")}
             </Text>
             <Feather name="arrow-right" size={20} color={colors.primaryForeground} />
           </TouchableOpacity>
@@ -180,10 +178,10 @@ export default function SetupScreen() {
       {step === "location" && (
         <>
           <Text style={[styles.heading, { color: colors.foreground }]}>
-            Set Your Location
+            {t("set_location")}
           </Text>
           <Text style={[styles.subheading, { color: colors.mutedForeground }]}>
-            Needed for accurate prayer times
+            {t("location_sub")}
           </Text>
 
           <TouchableOpacity
@@ -197,12 +195,12 @@ export default function SetupScreen() {
               <Feather name="map-pin" size={20} color={colors.primaryForeground} />
             )}
             <Text style={[styles.gpsBtnText, { color: colors.primaryForeground }]}>
-              {loadingGPS ? "Getting location…" : "Use GPS"}
+              {loadingGPS ? t("getting_location") : t("use_gps")}
             </Text>
           </TouchableOpacity>
 
           <Text style={[styles.orText, { color: colors.mutedForeground }]}>
-            or select a city
+            {t("or_select_city")}
           </Text>
 
           <View style={styles.cityGrid}>
@@ -237,21 +235,19 @@ export default function SetupScreen() {
         <>
           <View style={styles.locationConfirm}>
             <Feather name="map-pin" size={16} color={colors.primary} />
-            <Text style={[styles.locationText, { color: colors.primary }]}>
-              {cityName}
-            </Text>
+            <Text style={[styles.locationText, { color: colors.primary }]}>{cityName}</Text>
             <TouchableOpacity onPress={() => setStep("location")}>
               <Text style={[styles.changeText, { color: colors.mutedForeground }]}>
-                Change
+                {t("change")}
               </Text>
             </TouchableOpacity>
           </View>
 
           <Text style={[styles.heading, { color: colors.foreground }]}>
-            Calculation Method
+            {t("calc_method_heading")}
           </Text>
           <Text style={[styles.subheading, { color: colors.mutedForeground }]}>
-            Choose your region's prayer time standard
+            {t("calc_method_sub")}
           </Text>
 
           <View style={styles.methodList}>
@@ -262,7 +258,7 @@ export default function SetupScreen() {
                   styles.methodItem,
                   {
                     backgroundColor: colors.card,
-                    borderColor:     selectedMethod === m.key ? colors.primary : colors.border,
+                    borderColor: selectedMethod === m.key ? colors.primary : colors.border,
                   },
                 ]}
                 onPress={() => setSelectedMethod(m.key)}
@@ -299,7 +295,7 @@ export default function SetupScreen() {
             onPress={finishSetup}
           >
             <Text style={[styles.nextBtnText, { color: colors.primaryForeground }]}>
-              Continue
+              {t("continue_btn")}
             </Text>
             <Feather name="arrow-right" size={20} color={colors.primaryForeground} />
           </TouchableOpacity>
@@ -313,11 +309,7 @@ const styles = StyleSheet.create({
   container: { paddingHorizontal: 24, gap: 16 },
 
   stepIndicator: {
-    flexDirection:  "row",
-    alignItems:     "center",
-    alignSelf:      "center",
-    gap:            0,
-    marginBottom:   8,
+    flexDirection: "row", alignItems: "center", alignSelf: "center", gap: 0, marginBottom: 8,
   },
   stepDot:  { width: 10, height: 10, borderRadius: 5 },
   stepLine: { width: 48, height: 2 },
@@ -326,27 +318,17 @@ const styles = StyleSheet.create({
   subheading: { fontSize: 14, marginTop: -8 },
 
   nameInput: {
-    borderRadius:   14,
-    borderWidth:    1,
-    paddingHorizontal: 16,
-    paddingVertical:   14,
-    fontSize:       17,
-    marginTop:      4,
+    borderRadius: 14, borderWidth: 1,
+    paddingHorizontal: 16, paddingVertical: 14, fontSize: 17, marginTop: 4,
   },
 
   gpsBtn: {
-    borderRadius:    14,
-    paddingVertical: 16,
-    flexDirection:   "row",
-    alignItems:      "center",
-    justifyContent:  "center",
-    gap:             10,
-    marginTop:       4,
+    borderRadius: 14, paddingVertical: 16,
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 4,
   },
   gpsBtnText: { fontSize: 16, fontWeight: "600" },
 
-  orText: { textAlign: "center", fontSize: 13 },
-
+  orText:       { textAlign: "center", fontSize: 13 },
   cityGrid:     { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   cityChip:     { borderRadius: 20, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 8 },
   cityChipText: { fontSize: 14, fontWeight: "500" },
@@ -360,22 +342,14 @@ const styles = StyleSheet.create({
     borderRadius: 12, borderWidth: 1, padding: 14,
     flexDirection: "row", alignItems: "center", gap: 12,
   },
-  radio: {
-    width: 20, height: 20, borderRadius: 10, borderWidth: 2,
-    alignItems: "center", justifyContent: "center",
-  },
+  radio:      { width: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: "center", justifyContent: "center" },
   radioFill:  { width: 10, height: 10, borderRadius: 5 },
   methodName: { fontSize: 14, fontWeight: "600" },
   methodDesc: { fontSize: 11, marginTop: 2 },
 
   nextBtn: {
-    borderRadius:    16,
-    paddingVertical: 18,
-    flexDirection:   "row",
-    alignItems:      "center",
-    justifyContent:  "center",
-    gap:             10,
-    marginTop:       8,
+    borderRadius: 16, paddingVertical: 18,
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 8,
   },
   nextBtnText: { fontSize: 17, fontWeight: "700" },
 });
