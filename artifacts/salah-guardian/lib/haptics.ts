@@ -1,5 +1,4 @@
-import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
-import type { AudioPlayer } from "expo-audio";
+import { Audio, AVPlaybackStatus } from "expo-av";
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
 
@@ -21,27 +20,26 @@ async function rigid() {
   await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
 }
 
-// ── Beep sound (expo-audio) ───────────────────────────────────────────────────
+// ── Beep sound (expo-av, bundled local asset) ─────────────────────────────────
 
-let _beepPlayer: AudioPlayer | null = null;
+let _beepSound: Audio.Sound | null = null;
 let _beepReady = false;
 
-async function getBeepPlayer(): Promise<AudioPlayer | null> {
-  if (_beepPlayer && _beepReady) return _beepPlayer;
+async function getBeepSound(): Promise<Audio.Sound | null> {
+  if (_beepSound && _beepReady) return _beepSound;
   try {
-    await setAudioModeAsync({
-      playsInSilentMode: true,
-      interruptionMode: "mixWithOthers",
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS:   false,
+      playsInSilentModeIOS: true,
+      shouldDuckAndroid:    true,
     });
-    const player = createAudioPlayer(
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require("../assets/audio/beep.wav")
+    const { sound } = await Audio.Sound.createAsync(
+      require("../assets/audio/beep.wav"),
+      { shouldPlay: false, volume: 1.0 }
     );
-    player.volume = 1.0;
-    player.loop = false;
-    _beepPlayer = player;
+    _beepSound = sound;
     _beepReady = true;
-    return player;
+    return sound;
   } catch {
     return null;
   }
@@ -49,17 +47,17 @@ async function getBeepPlayer(): Promise<AudioPlayer | null> {
 
 /** Pre-load the beep sound so it's ready instantly when needed. */
 export function preloadBeep() {
-  if (IS_NATIVE) getBeepPlayer();
+  if (IS_NATIVE) getBeepSound();
 }
 
 /** Play a short beep to signal a wrong posture (alongside vibration). */
 export async function playWrongBeep(enabled: boolean) {
   if (!IS_NATIVE || !enabled) return;
   try {
-    const player = await getBeepPlayer();
-    if (!player) return;
-    player.seekTo(0);
-    player.play();
+    const sound = await getBeepSound();
+    if (!sound) return;
+    await sound.setPositionAsync(0);
+    await sound.playAsync();
   } catch { /* ignore */ }
 }
 
@@ -103,7 +101,6 @@ export async function vibrateWrong(
 ) {
   if (!IS_NATIVE || !enabled) return;
   try {
-    // Play beep and vibration simultaneously
     playWrongBeep(enabled);
     switch (strength) {
       case "low":

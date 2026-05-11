@@ -602,13 +602,13 @@ export default function SettingsScreen() {
                     style={[
                       styles.chip,
                       {
-                        backgroundColor: azkar.intervalMinutes === min ? colors.primary : colors.secondary,
-                        borderColor:     azkar.intervalMinutes === min ? colors.primary : colors.border,
+                        backgroundColor: azkar.frequencyMinutes === min ? colors.primary : colors.secondary,
+                        borderColor:     azkar.frequencyMinutes === min ? colors.primary : colors.border,
                       },
                     ]}
-                    onPress={() => updateAzkar({ intervalMinutes: min })}
+                    onPress={() => updateAzkar({ frequencyMinutes: min })}
                   >
-                    <Text style={[styles.chipText, { color: azkar.intervalMinutes === min ? colors.primaryForeground : colors.mutedForeground }]}>
+                    <Text style={[styles.chipText, { color: azkar.frequencyMinutes === min ? colors.primaryForeground : colors.mutedForeground }]}>
                       {min}
                     </Text>
                   </TouchableOpacity>
@@ -648,7 +648,7 @@ export default function SettingsScreen() {
                 {t("s_font_size")}
               </Text>
               <View style={styles.chipRow}>
-                {[14, 16, 18, 20, 22].map((sz) => (
+                {(["small", "medium", "large"] as const).map((sz) => (
                   <TouchableOpacity
                     key={sz}
                     style={[
@@ -661,7 +661,7 @@ export default function SettingsScreen() {
                     onPress={() => updateAzkar({ fontSize: sz })}
                   >
                     <Text style={[styles.chipText, { color: azkar.fontSize === sz ? colors.primaryForeground : colors.mutedForeground }]}>
-                      {sz}
+                      {sz === "small" ? "S" : sz === "medium" ? "M" : "L"}
                     </Text>
                   </TouchableOpacity>
                 ))}

@@ -151,7 +151,7 @@ const en = {
   s_reset:             "Reset Setup",
 } as const;
 
-const ar: typeof en = {
+const ar: { [K in keyof typeof en]: string } = {
   // ── Tabs ────────────────────────────────────────────────────────────────────
   tab_home:     "الرئيسية",
   tab_log:      "سجل الصلاة",

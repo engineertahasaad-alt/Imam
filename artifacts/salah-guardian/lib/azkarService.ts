@@ -121,11 +121,36 @@ const SETTINGS_KEY = "@azkar/settings_v1";
 const HISTORY_KEY  = "@azkar/history_v1";
 const REPEAT_BUFFER = 4; // avoid repeating last N azkar
 
+const VALID_FONT_SIZES = new Set<AzkarSettings["fontSize"]>(["small", "medium", "large"]);
+const VALID_POSITIONS  = new Set<AzkarSettings["position"]>(["left", "right"]);
+
+function sanitizeAzkarSettings(raw: Partial<AzkarSettings>): AzkarSettings {
+  return {
+    ...DEFAULT_AZKAR_SETTINGS,
+    ...raw,
+    fontSize: VALID_FONT_SIZES.has(raw.fontSize as AzkarSettings["fontSize"])
+      ? (raw.fontSize as AzkarSettings["fontSize"])
+      : DEFAULT_AZKAR_SETTINGS.fontSize,
+    position: VALID_POSITIONS.has(raw.position as AzkarSettings["position"])
+      ? (raw.position as AzkarSettings["position"])
+      : DEFAULT_AZKAR_SETTINGS.position,
+    frequencyMinutes: typeof raw.frequencyMinutes === "number" && raw.frequencyMinutes > 0
+      ? raw.frequencyMinutes
+      : DEFAULT_AZKAR_SETTINGS.frequencyMinutes,
+    displaySeconds: typeof raw.displaySeconds === "number" && raw.displaySeconds > 0
+      ? raw.displaySeconds
+      : DEFAULT_AZKAR_SETTINGS.displaySeconds,
+    opacity: typeof raw.opacity === "number"
+      ? Math.max(0.1, Math.min(1, raw.opacity))
+      : DEFAULT_AZKAR_SETTINGS.opacity,
+  };
+}
+
 export async function loadAzkarSettings(): Promise<AzkarSettings> {
   try {
     const raw = await AsyncStorage.getItem(SETTINGS_KEY);
     if (!raw) return { ...DEFAULT_AZKAR_SETTINGS };
-    return { ...DEFAULT_AZKAR_SETTINGS, ...JSON.parse(raw) };
+    return sanitizeAzkarSettings(JSON.parse(raw));
   } catch {
     return { ...DEFAULT_AZKAR_SETTINGS };
   }

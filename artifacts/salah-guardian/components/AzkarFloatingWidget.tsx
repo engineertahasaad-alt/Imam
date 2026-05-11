@@ -119,7 +119,7 @@ export function AzkarFloatingWidget() {
 
   // Never completely unmount so exit animations can play;
   // block touches when invisible so we don't steal taps from the app
-  const fs = FONT_SIZES[settings.fontSize];
+  const fs = FONT_SIZES[settings.fontSize] ?? FONT_SIZES.medium;
 
   // Horizontal offset from the appropriate edge
   const leftPos  = snapSide === -1 ? EDGE_MARGIN : undefined;
