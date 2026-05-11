@@ -15,8 +15,10 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { AzkarFloatingWidget } from "@/components/AzkarFloatingWidget";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/context/AppContext";
+import { AzkarProvider } from "@/context/AzkarContext";
 
 LogBox.ignoreLogs([
   "expo-notifications: Android Push notifications",
@@ -77,11 +79,15 @@ export default function RootLayout() {
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <AppProvider>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <KeyboardProvider>
-                <RootLayoutNav />
-              </KeyboardProvider>
-            </GestureHandlerRootView>
+            <AzkarProvider>
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <KeyboardProvider>
+                  <RootLayoutNav />
+                  {/* Widget renders above screens but below any Modal (prayer detection is safe) */}
+                  <AzkarFloatingWidget />
+                </KeyboardProvider>
+              </GestureHandlerRootView>
+            </AzkarProvider>
           </AppProvider>
         </QueryClientProvider>
       </ErrorBoundary>

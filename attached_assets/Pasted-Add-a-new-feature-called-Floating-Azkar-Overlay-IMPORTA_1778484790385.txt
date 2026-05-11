@@ -1,0 +1,95 @@
+Add a new feature called:
+
+"Floating Azkar Overlay"
+
+IMPORTANT:
+
+* DO NOT rebuild the application.
+* DO NOT modify existing prayer systems.
+* DO NOT break any current functionality.
+* Add this as an isolated modular feature.
+
+Feature Description:
+A small floating overlay should appear on top of other apps periodically and display short Islamic azkar/reminders.
+
+Main Requirements:
+
+1. Overlay Style
+
+* Small side floating widget.
+* NOT full screen.
+* Minimalistic design.
+* Elegant Islamic appearance.
+* Semi-transparent background.
+* Rounded corners.
+* Smooth animations.
+
+2. Behavior
+
+* Appears periodically (example: every 30 minutes).
+* Auto-hides after a few seconds.
+* User can manually dismiss it.
+* User can drag it on screen edges.
+
+3. Content
+   Display preloaded short azkar such as:
+
+* سبحان الله
+* الحمد لله
+* لا إله إلا الله
+* استغفر الله
+* اللهم صل وسلم على نبينا محمد
+
+4. Smart Rotation
+
+* Randomize azkar intelligently.
+* Avoid repeating the same zikr too frequently.
+
+5. Respectful UX
+
+* Never interrupt games/videos aggressively.
+* No loud sounds.
+* Optional soft vibration only.
+
+6. Permissions
+   Use proper Android SYSTEM_ALERT_WINDOW permission handling professionally.
+
+7. Battery Optimization
+
+* Must be extremely lightweight.
+* Avoid aggressive background services.
+* Use optimized scheduling.
+
+8. User Controls
+   Allow users to configure:
+
+* Enable/disable overlay
+* Frequency
+* Position
+* Transparency
+* Font size
+
+9. Compatibility
+
+* Must support Android background restrictions correctly.
+* Must survive app minimization.
+* Should work reliably on Samsung/Xiaomi/Oppo devices.
+
+10. Safety
+
+* Prevent overlay spam.
+* Prevent showing during active prayer session.
+* Prevent overlapping with important system dialogs.
+
+11. Architecture
+    Implement as a separate overlay service module so it can evolve independently later.
+
+12. Future Expansion
+    Prepare the system for future:
+
+* Daily hadith overlays
+* Quran reminders
+* Prayer countdown widgets
+* AI-generated reminders
+
+The implementation must preserve all existing app behavior and architecture stability.

@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
+import { useAzkar } from "@/context/AzkarContext";
 import { useColors } from "@/hooks/useColors";
 import {
   ADHAN_VOICE_LABELS,
@@ -43,10 +44,14 @@ const STRENGTH_LABELS: Record<string, { label: string; hint: string }> = {
   high:   { label: "Maximum", hint: "3–4 pulses" },
 };
 
+const FREQUENCY_OPTIONS = [5, 10, 15, 20, 30];
+const DISPLAY_OPTIONS   = [3, 5, 8, 10];
+
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { settings, updateSettings, calibration, saveCalibrationData } = useApp();
+  const { settings: azkar, updateSettings: updateAzkar, showNow } = useAzkar();
 
   const sensitivity       = settings.sensitivity       ?? 3;
   const vibrationStrength = settings.vibrationStrength ?? "high";
@@ -530,6 +535,202 @@ export default function SettingsScreen() {
           <Feather name="refresh-cw" size={16} color={colors.primary} />
           <Text style={[styles.calibrateBtnText, { color: colors.primary }]}>Re-calibrate</Text>
         </TouchableOpacity>
+      </SettingsSection>
+
+      {/* ── Azkar Overlay ─────────────────────────────────────────────────── */}
+      <SettingsSection title="Azkar Reminder" colors={colors}>
+        {/* Master toggle */}
+        <SettingsRow colors={colors}>
+          <Text style={{ fontSize: 18 }}>🤲</Text>
+          <Text style={[styles.rowLabel, { color: colors.foreground, flex: 1 }]}>
+            Floating Azkar Overlay
+          </Text>
+          <Switch
+            value={azkar.enabled}
+            onValueChange={(v) => updateAzkar({ enabled: v })}
+            trackColor={{ true: colors.primary, false: colors.border }}
+            thumbColor="#fff"
+          />
+        </SettingsRow>
+
+        {azkar.enabled && (
+          <>
+            {/* Frequency */}
+            <View style={styles.insetSection}>
+              <Text style={[styles.insetLabel, { color: colors.mutedForeground }]}>
+                Show every (minutes)
+              </Text>
+              <View style={styles.chipRow}>
+                {FREQUENCY_OPTIONS.map((m) => (
+                  <TouchableOpacity
+                    key={m}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: azkar.frequencyMinutes === m ? colors.primary : colors.secondary,
+                        borderColor:     azkar.frequencyMinutes === m ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => updateAzkar({ frequencyMinutes: m })}
+                  >
+                    <Text style={[styles.chipText, { color: azkar.frequencyMinutes === m ? colors.primaryForeground : colors.mutedForeground }]}>
+                      {m}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Display duration */}
+            <View style={styles.insetSection}>
+              <Text style={[styles.insetLabel, { color: colors.mutedForeground }]}>
+                Display duration (seconds)
+              </Text>
+              <View style={styles.chipRow}>
+                {DISPLAY_OPTIONS.map((s) => (
+                  <TouchableOpacity
+                    key={s}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: azkar.displaySeconds === s ? colors.primary : colors.secondary,
+                        borderColor:     azkar.displaySeconds === s ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => updateAzkar({ displaySeconds: s })}
+                  >
+                    <Text style={[styles.chipText, { color: azkar.displaySeconds === s ? colors.primaryForeground : colors.mutedForeground }]}>
+                      {s}s
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Font size */}
+            <View style={styles.insetSection}>
+              <Text style={[styles.insetLabel, { color: colors.mutedForeground }]}>
+                Arabic text size
+              </Text>
+              <View style={styles.chipRow}>
+                {(["small", "medium", "large"] as const).map((size) => (
+                  <TouchableOpacity
+                    key={size}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: azkar.fontSize === size ? colors.primary : colors.secondary,
+                        borderColor:     azkar.fontSize === size ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => updateAzkar({ fontSize: size })}
+                  >
+                    <Text style={[styles.chipText, { color: azkar.fontSize === size ? colors.primaryForeground : colors.mutedForeground }]}>
+                      {size.charAt(0).toUpperCase() + size.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Position */}
+            <View style={styles.insetSection}>
+              <Text style={[styles.insetLabel, { color: colors.mutedForeground }]}>
+                Default screen side
+              </Text>
+              <View style={styles.chipRow}>
+                {(["left", "right"] as const).map((side) => (
+                  <TouchableOpacity
+                    key={side}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: azkar.position === side ? colors.primary : colors.secondary,
+                        borderColor:     azkar.position === side ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => updateAzkar({ position: side })}
+                  >
+                    <Text style={[styles.chipText, { color: azkar.position === side ? colors.primaryForeground : colors.mutedForeground }]}>
+                      {side === "left" ? "◀ Left" : "Right ▶"}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={[styles.insetHint, { color: colors.mutedForeground }]}>
+                You can also drag the widget to either side
+              </Text>
+            </View>
+
+            {/* Opacity */}
+            <View style={styles.insetSection}>
+              <Text style={[styles.insetLabel, { color: colors.mutedForeground }]}>
+                Opacity
+              </Text>
+              <View style={styles.chipRow}>
+                {[0.6, 0.75, 0.9, 1.0].map((op) => (
+                  <TouchableOpacity
+                    key={op}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: Math.abs(azkar.opacity - op) < 0.05 ? colors.primary : colors.secondary,
+                        borderColor:     Math.abs(azkar.opacity - op) < 0.05 ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => updateAzkar({ opacity: op })}
+                  >
+                    <Text style={[styles.chipText, { color: Math.abs(azkar.opacity - op) < 0.05 ? colors.primaryForeground : colors.mutedForeground }]}>
+                      {Math.round(op * 100)}%
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Soft vibration toggle */}
+            <SettingsRow colors={colors}>
+              <Feather name="wind" size={18} color={colors.primary} />
+              <Text style={[styles.rowLabel, { color: colors.foreground, flex: 1 }]}>
+                Soft vibration on appear
+              </Text>
+              <Switch
+                value={azkar.vibration}
+                onValueChange={(v) => updateAzkar({ vibration: v })}
+                trackColor={{ true: colors.primary, false: colors.border }}
+                thumbColor="#fff"
+              />
+            </SettingsRow>
+
+            {/* Background notifications toggle */}
+            <SettingsRow colors={colors}>
+              <Feather name="bell" size={18} color={colors.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.rowLabel, { color: colors.foreground }]}>
+                  Background Reminders
+                </Text>
+                <Text style={[styles.rowValue, { color: colors.mutedForeground }]}>
+                  Notifications when app is closed
+                </Text>
+              </View>
+              <Switch
+                value={azkar.backgroundNotifications}
+                onValueChange={(v) => updateAzkar({ backgroundNotifications: v })}
+                trackColor={{ true: colors.primary, false: colors.border }}
+                thumbColor="#fff"
+              />
+            </SettingsRow>
+
+            {/* Preview button */}
+            <TouchableOpacity
+              style={[styles.calibrateBtn, { borderColor: colors.primary }]}
+              onPress={showNow}
+            >
+              <Text style={{ fontSize: 14 }}>🤲</Text>
+              <Text style={[styles.calibrateBtnText, { color: colors.primary }]}>Preview Widget Now</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </SettingsSection>
 
       {/* ── About ─────────────────────────────────────────────────────────── */}
