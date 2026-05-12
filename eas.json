@@ -1,32 +1,33 @@
-{
-  "cli": {
-    "version": ">= 18.11.0",
-    "appVersionSource": "remote"
-  },
-  "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal",
-      "android": {
-        "image": "latest"
-      }
+  {
+    "cli": {
+      "version": ">= 18.11.0",
+      "appVersionSource": "remote"
     },
-    "preview": {
-      "distribution": "internal",
-      "android": {
-        "image": "latest"
+    "build": {
+      "development": {
+        "developmentClient": true,
+        "distribution": "internal",
+        "android": {
+          "image": "latest"
+        }
       },
-      "env": {
-        "PNPM_VERSION": "9.15.9"
-    },
-    "production": {
-      "autoIncrement": true,
-      "android": {
-        "image": "latest"
+      "preview": {
+        "distribution": "internal",
+        "android": {
+          "image": "latest"
+        },
+        "env": {
+          "PNPM_VERSION": "9.15.9"
+        }
+      },
+      "production": {
+        "autoIncrement": true,
+        "android": {
+          "image": "latest"
+        }
       }
+    },
+    "submit": {
+      "production": {}
     }
-  },
-  "submit": {
-    "production": {}
   }
-}
