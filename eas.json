@@ -15,7 +15,9 @@
       "distribution": "internal",
       "android": {
         "image": "latest"
-      }
+      },
+      "env": {
+        "PNPM_VERSION": "9.15.9"
     },
     "production": {
       "autoIncrement": true,
