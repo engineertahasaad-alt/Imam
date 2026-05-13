@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   Vibration,
   View,
 } from "react-native";
@@ -95,6 +96,8 @@ export default function HomeScreen() {
   const colors  = useColors();
   const insets  = useSafeAreaInsets();
   const { t, isArabic } = useTranslation();
+  const { width: screenWidth } = useWindowDimensions();
+  const fs = Math.min(1, Math.max(0.82, screenWidth / 390));
 
   const {
     settings, isLoading, prayerStatuses, currentPrayer,
@@ -203,13 +206,13 @@ export default function HomeScreen() {
         {/* ── HEADER ─────────────────────────────────────────────── */}
         <View style={[styles.header, { paddingHorizontal: 14 }]}>
           <View style={styles.headerLeft}>
-            <Text style={[styles.greeting, { color: colors.foreground }]} numberOfLines={1}>
+            <Text style={[styles.greeting, { color: colors.foreground, fontSize: 16 * fs }]} numberOfLines={1}>
               {greeting}
             </Text>
             {nextPrayer ? (
               <View style={styles.nextChip}>
                 <MaterialCommunityIcons name="clock-outline" size={11} color={colors.primary} />
-                <Text style={[styles.nextChipText, { color: colors.primary }]}>
+                <Text style={[styles.nextChipText, { color: colors.primary, fontSize: 12 * fs }]}>
                   {isArabic
                     ? `${PRAYER_ARABIC[nextPrayer] ?? nextPrayer} · ${nextTimeText}`
                     : `${nextPrayer} · ${nextTimeText}`}
@@ -242,12 +245,12 @@ export default function HomeScreen() {
               <View style={[styles.cardIconWrap, { backgroundColor: "rgba(52,211,153,0.18)" }]}>
                 <MaterialCommunityIcons name="mosque" size={16} color="#34d399" />
               </View>
-              <Text style={styles.cardTitle}>{isArabic ? "الصلاة" : "Prayer"}</Text>
+              <Text style={[styles.cardTitle, { fontSize: 18 * fs }]}>{isArabic ? "الصلاة" : "Prayer"}</Text>
             </View>
             {nextPrayer && (
               <View style={styles.countdownInline}>
-                <Text style={styles.countdownArabic}>{PRAYER_ARABIC[nextPrayer] ?? nextPrayer}</Text>
-                <Text style={styles.countdownText}>{countdownText}</Text>
+                <Text style={[styles.countdownArabic, { fontSize: 13 * fs }]}>{PRAYER_ARABIC[nextPrayer] ?? nextPrayer}</Text>
+                <Text style={[styles.countdownText, { fontSize: Math.max(20, 26 * fs) }]}>{countdownText}</Text>
               </View>
             )}
           </View>

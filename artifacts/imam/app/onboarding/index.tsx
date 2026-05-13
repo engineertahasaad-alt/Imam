@@ -105,7 +105,7 @@ export default function WelcomeScreen() {
 
         <TouchableOpacity
           style={[styles.cta, { backgroundColor: colors.primary }]}
-          onPress={() => router.push("/onboarding/setup")}
+          onPress={() => router.push("/onboarding/language")}
         >
           <Text style={[styles.ctaText, { color: colors.primaryForeground }]}>
             {t("get_started")}

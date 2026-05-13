@@ -636,8 +636,9 @@ export function azkarSoftVibrate(): void {
 
 // ── Background notification scheduling ───────────────────────────────────────
 
-const AZKAR_PREFIX   = "azkar_bg_";
-const SCHEDULE_AHEAD = 10;
+const AZKAR_PREFIX       = "azkar_bg_";
+const AZKAR_REPEAT_ID    = "azkar_repeating";
+const SCHEDULE_AHEAD     = 12;
 
 export async function scheduleAzkarNotifications(
   settings: AzkarSettings
@@ -647,9 +648,29 @@ export async function scheduleAzkarNotifications(
   await cancelAzkarNotifications();
   if (!settings.enabled || !settings.backgroundNotifications) return;
 
-  const intervalMs = settings.frequencyMinutes * 60 * 1000;
-  const now        = Date.now();
+  const intervalSeconds = settings.frequencyMinutes * 60;
+  const intervalMs      = intervalSeconds * 1000;
+  const now             = Date.now();
 
+  // ── 1. Reliable repeating notification (works after app kill / reboot) ──────
+  // Uses TIME_INTERVAL with repeats:true — fires every N seconds indefinitely.
+  // Content is generic (can't be dynamic per-fire without background task).
+  await Notifications.scheduleNotificationAsync({
+    identifier: AZKAR_REPEAT_ID,
+    content: {
+      title: "🤲 ذكر",
+      body:  "اذكر الله — Remember Allah",
+      data:  { type: "azkar_repeat" },
+      sound: undefined,
+    },
+    trigger: {
+      type:    Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds: intervalSeconds,
+      repeats: true,
+    },
+  }).catch(() => {});
+
+  // ── 2. Scheduled ahead with rich content (while app is alive / recent) ──────
   for (let i = 1; i <= SCHEDULE_AHEAD; i++) {
     const zikr   = await pickNextZikr();
     const fireAt = new Date(now + i * intervalMs);
@@ -658,8 +679,9 @@ export async function scheduleAzkarNotifications(
       identifier: `${AZKAR_PREFIX}${i}`,
       content: {
         title: "🤲 ذكر",
-        body:  `${zikr.arabic}\n${zikr.transliteration}`,
+        body:  zikr.arabic.slice(0, 120),
         data:  { type: "azkar" },
+        sound: undefined,
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -672,6 +694,7 @@ export async function scheduleAzkarNotifications(
 export async function cancelAzkarNotifications(): Promise<void> {
   if (Platform.OS === "web") return;
   try {
+    await Notifications.cancelScheduledNotificationAsync(AZKAR_REPEAT_ID).catch(() => {});
     const all = await Notifications.getAllScheduledNotificationsAsync();
     for (const n of all) {
       if (n.identifier.startsWith(AZKAR_PREFIX)) {

@@ -1,0 +1,334 @@
+IMPORTANT:
+Do NOT rebuild the application from scratch.
+Do NOT remove, replace, downgrade, or break any existing feature.
+All current functionality must remain fully intact.
+Only implement the requested improvements carefully and incrementally.
+
+This app is an Islamic prayer assistant and posture-detection app. Stability, background execution, low battery impact, sensor accuracy, and smooth UX are critical.
+
+========================
+CRITICAL ENGINEERING RULES
+==========================
+
+These rules are mandatory and must be respected during implementation:
+
+1. Never aggressively rewrite working systems.
+   Use incremental improvements only.
+
+2. Never replace currently working posture-detection logic entirely.
+   Enhance it gradually while preserving existing behavior.
+
+3. Avoid battery drain at all costs.
+   Background execution must be optimized carefully.
+
+4. Do NOT keep sensors running 24/7 unnecessarily.
+   Motion sensors should activate intelligently only:
+
+* during prayer
+* during training
+* during calibration
+* or when needed
+
+5. Floating overlay must remain:
+
+* lightweight
+* small
+* optional
+* non-intrusive
+* compliant with Google Play policies
+
+6. Background services must be implemented using proper Android foreground-service architecture to avoid:
+
+* service termination
+* notification failure
+* delayed reminders
+* Android killing the process
+
+7. Optimize:
+
+* memory usage
+* CPU usage
+* sensor polling frequency
+* background tasks
+
+8. Avoid:
+
+* UI lag
+* overheating
+* battery drain
+* excessive wake locks
+* infinite loops
+* aggressive background polling
+
+9. Before modifying any module:
+   Analyze existing architecture first.
+   Then apply targeted improvements only.
+
+10. Maintain APK stability and build compatibility throughout all changes.
+
+========================
+
+1. BACKGROUND EXECUTION FIX
+   ========================
+
+Fix all notification / floating azkar / reminders so they work in ALL states:
+
+* While app is open
+* While app is minimized
+* While screen is locked
+* While another app is open
+* After device reboot if possible
+
+Implement proper Android background services / foreground service where needed.
+
+Ensure:
+
+* Floating azkar continue appearing on schedule
+* Prayer reminders continue working
+* Notifications are reliable
+* Timers do not stop when app is minimized
+
+IMPORTANT:
+If user enables periodic azkar reminders (every 15 min / 30 min / 1 hour etc.), the reminders MUST continue automatically in background without requiring the user to reopen the app daily.
+
+The app should preserve reminder schedules persistently and resume them automatically after app restart or device reboot when possible.
+
+Add battery optimization handling:
+
+* Detect battery optimization restrictions
+* Prompt user to disable battery optimization for the app
+* Explain why politely inside onboarding/settings
+
+========================
+2. QIBLA COMPASS IMPROVEMENT
+============================
+
+Improve Qibla direction system:
+
+* Make compass live and continuously updating
+* Use all available sensors safely:
+
+  * Magnetometer
+  * Accelerometer
+  * Gyroscope if available
+
+Add calibration guidance when compass becomes unstable.
+
+Request all permissions needed for accurate compass functionality.
+
+Handle:
+
+* Sensor unavailable
+* Weak magnetic field
+* Calibration issues
+* No location access
+
+Improve smoothing/filtering to reduce compass shaking.
+
+========================
+3. PERMISSIONS SYSTEM
+=====================
+
+Create complete runtime permission flow.
+
+The app should intelligently request permissions only when needed, including:
+
+* Location
+* Notifications
+* Foreground service
+* Overlay / Display over other apps
+* Exact alarms if needed
+* Vibration
+* Background activity permissions where supported
+* Ignore battery optimization
+
+Add proper explanations BEFORE asking permissions.
+
+Never crash if permission denied.
+
+========================
+4. WELCOME + ONBOARDING FLOW
+============================
+
+Add elegant Islamic-themed welcome experience.
+
+FIRST LAUNCH FLOW:
+
+1. Welcome screen
+2. Language selection screen
+3. Permissions explanation
+4. Optional quick setup
+5. Home screen
+
+IMPORTANT:
+Language selection must happen BEFORE settings or onboarding details.
+
+Support:
+
+* Arabic
+* English
+
+Persist selected language permanently.
+
+========================
+5. FLOATING AZKAR SOUND
+=======================
+
+Replace current harsh “beep” sound.
+
+Use:
+
+* Soft
+* Calm
+* Spiritual
+* Minimal
+* Non-annoying Islamic-style notification tone
+
+The sound should feel peaceful and elegant.
+
+Do NOT use loud or aggressive sounds.
+
+========================
+6. HOME SCREEN TYPOGRAPHY
+=========================
+
+Increase readability of home screen.
+
+Requirements:
+
+* Slightly larger fonts
+* Better spacing
+* Responsive scaling
+* No UI overflow
+* Must look correct on:
+
+  * Small phones
+  * Large phones
+  * Tablets
+
+Use responsive typography system instead of fixed font sizes.
+
+========================
+7. FULL ANDROID DEVICE COMPATIBILITY
+====================================
+
+Improve compatibility across Android ecosystem.
+
+Support:
+
+* Old Android versions where possible
+* Modern Android versions
+* Small screens
+* Large screens
+* Different aspect ratios
+* Samsung/Xiaomi/Oppo/Realme/etc.
+
+Ensure:
+
+* Safe area handling
+* Bottom navigation compatibility
+* No clipped UI
+* No overlap with gesture navigation
+
+========================
+8. WRONG POSTURE ALERTS
+=======================
+
+When wrong prayer posture is detected:
+
+Trigger:
+
+* Strong vibration
+* Clearly audible alert
+* Immediate feedback
+
+Ensure alerts work even:
+
+* Screen locked
+* App minimized
+* Device in pocket
+
+Allow future customization of:
+
+* vibration strength
+* sound volume
+* sensitivity
+
+========================
+9. POSTURE DETECTION IMPROVEMENT
+================================
+
+Improve posture detection accuracy significantly.
+
+Use all safe available motion sensors.
+
+Improve:
+
+* posture classification
+* motion filtering
+* transition detection
+* sequence validation
+
+The app must verify:
+Correct prayer posture
+AND
+Correct order of prayer movements
+
+Examples:
+Qiyam → Ruku → Standing → Sujood → Sitting → Sujood
+
+Reduce false positives and accidental detections.
+
+IMPORTANT:
+Improve the existing logic incrementally without replacing or breaking currently working posture-detection behavior.
+
+Improve training system:
+
+* More adaptive learning
+* Better matching against trained samples
+* Better tolerance handling between users
+
+========================
+10. TRAINING SYSTEM
+===================
+
+Keep existing training system intact.
+
+Ensure:
+
+* Unlimited retraining sessions
+* Accuracy improves over time
+* New training sessions refine the model instead of replacing it blindly
+* User data persists safely locally
+
+Do NOT remove existing trained data accidentally.
+
+========================
+11. ADHAN AUDIO DEFAULT
+=======================
+
+Remove Mishary Rashid as default adhan voice.
+
+Set default adhan to:
+Sheikh Abdul Basit Abdul Samad
+
+Keep architecture flexible so more adhan voices can be added later.
+
+========================
+12. STABILITY REQUIREMENTS
+==========================
+
+Critical requirements:
+
+* No feature regression
+* No UI redesign unless necessary
+* No removal of current functionality
+* No breaking existing APK build
+* Keep performance optimized
+* Keep battery consumption reasonable
+* Avoid memory leaks
+* Avoid aggressive background CPU usage
+
+Before modifying anything:
+Analyze existing architecture first.
+Only make targeted improvements.

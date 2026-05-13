@@ -88,7 +88,7 @@ function defaultSettings(): AppSettings {
     prayerTimeOffsetMinutes: 0,
     vibrationStrength: "high",
     adhanEnabled: true,
-    adhanVoice: "alafasy",
+    adhanVoice: "abdulbasit",
     adhanVolume: 0.8,
     invalidPostureAlerts: true,
   };
