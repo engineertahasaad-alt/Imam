@@ -19,7 +19,8 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Used to calculate accurate prayer times for your location.",
         "NSLocationAlwaysUsageDescription": "Used to calculate accurate prayer times for your location.",
-        "NSMotionUsageDescription": "Used to detect prayer movements using motion sensors."
+        "NSMotionUsageDescription": "Used to detect prayer movements using motion sensors.",
+        "UIBackgroundModes": ["audio", "fetch", "remote-notification"]
       }
     },
     "android": {
@@ -34,7 +35,9 @@
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "USE_EXACT_ALARM",
-        "SCHEDULE_EXACT_ALARM"
+        "SCHEDULE_EXACT_ALARM",
+        "MODIFY_AUDIO_SETTINGS",
+        "android.permission.USE_FULL_SCREEN_INTENT"
       ]
     },
     "web": {

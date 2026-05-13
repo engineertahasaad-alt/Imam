@@ -51,7 +51,7 @@ async function configureAudioSession() {
     await Audio.setAudioModeAsync({
       allowsRecordingIOS:      false,
       playsInSilentModeIOS:    true,
-      staysActiveInBackground: false,
+      staysActiveInBackground: true,
       shouldDuckAndroid:       false,
     });
   } catch { /* ignore on web */ }
