@@ -14,11 +14,17 @@ import { LogBox } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { setBaseUrl } from "@workspace/api-client-react";
 
 import { AzkarFloatingWidget } from "@/components/AzkarFloatingWidget";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/context/AppContext";
 import { AzkarProvider } from "@/context/AzkarContext";
+
+const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+if (apiUrl) {
+  setBaseUrl(apiUrl);
+}
 
 LogBox.ignoreLogs([
   "expo-notifications: Android Push notifications",
