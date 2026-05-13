@@ -114,7 +114,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     prayerTimeOffsetMinutes: 0,
     vibrationStrength: "high",
     adhanEnabled: true,
-    adhanVoice: "alafasy",
+    adhanVoice: "abdulbasit",
     adhanVolume: 0.8,
     invalidPostureAlerts: true,
     userName: undefined,

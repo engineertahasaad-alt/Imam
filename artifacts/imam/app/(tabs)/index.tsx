@@ -25,6 +25,7 @@ import { useAzkar } from "@/context/AzkarContext";
 import { useColors } from "@/hooks/useColors";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatCountdown, formatTime, PRAYER_ARABIC } from "@/lib/prayerCalculator";
+import { getIslamicDayLabel, toHijri } from "@/lib/hijriCalendar";
 
 const ALERT_THRESHOLD_MS = 5 * 60 * 1000;
 const TAB_H = Platform.OS === "web" ? 84 : 62;
@@ -98,6 +99,9 @@ export default function HomeScreen() {
   const { t, isArabic } = useTranslation();
   const { width: screenWidth } = useWindowDimensions();
   const fs = Math.min(1, Math.max(0.82, screenWidth / 390));
+
+  const hijri        = toHijri();
+  const islamicLabel = getIslamicDayLabel(hijri);
 
   const {
     settings, isLoading, prayerStatuses, currentPrayer,
@@ -219,6 +223,16 @@ export default function HomeScreen() {
                 </Text>
               </View>
             ) : null}
+          </View>
+          <View style={styles.hijriBlock}>
+            <Text style={[styles.hijriDate, { color: colors.mutedForeground }]}>
+              {isArabic ? hijri.formattedAr : hijri.formatted}
+            </Text>
+            {islamicLabel && (
+              <View style={[styles.islamicChip, { backgroundColor: colors.primary + "18" }]}>
+                <Text style={[styles.islamicChipText, { color: colors.primary }]}>{islamicLabel}</Text>
+              </View>
+            )}
           </View>
           <TouchableOpacity
             style={[styles.headerBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -631,11 +645,15 @@ const styles = StyleSheet.create({
   root: { flex: 1, gap: 12, justifyContent: "center" },
 
   /* Header */
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   headerLeft: { flex: 1, gap: 3 },
   greeting: { fontSize: 16, fontWeight: "700", letterSpacing: -0.3 },
   nextChip: { flexDirection: "row", alignItems: "center", gap: 4 },
   nextChipText: { fontSize: 12, fontWeight: "600" },
+  hijriBlock: { alignItems: "flex-end", gap: 3, flexShrink: 0 },
+  hijriDate: { fontSize: 11, fontWeight: "500", textAlign: "right" },
+  islamicChip: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  islamicChipText: { fontSize: 9, fontWeight: "700" },
   headerBtn: {
     width: 34, height: 34, borderRadius: 17, borderWidth: 1,
     alignItems: "center", justifyContent: "center", flexShrink: 0,
