@@ -18,6 +18,7 @@ import {
 
 import { useAzkar } from "@/context/AzkarContext";
 import { useColors } from "@/hooks/useColors";
+import { useTranslation } from "@/hooks/useTranslation";
 
 const WIDGET_WIDTH  = 220;
 const EDGE_MARGIN   = 8;
@@ -32,6 +33,7 @@ const FONT_SIZES = {
 export function AzkarFloatingWidget() {
   const { settings, currentZikr, widgetVisible, dismissWidget } = useAzkar();
   const colors = useColors();
+  const { isArabic } = useTranslation();
 
   const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
@@ -160,7 +162,7 @@ export function AzkarFloatingWidget() {
         </TouchableOpacity>
       </View>
 
-      {/* Arabic text */}
+      {/* Zikr text — language-aware, no mixed display */}
       {currentZikr && (
         <View style={styles.body}>
           <Text
@@ -169,12 +171,11 @@ export function AzkarFloatingWidget() {
           >
             {currentZikr.arabic}
           </Text>
-          <Text style={[styles.roman, { color: colors.mutedForeground, fontSize: fs.roman }]}>
-            {currentZikr.transliteration}
-          </Text>
-          <Text style={[styles.translation, { color: colors.mutedForeground + "bb", fontSize: fs.translation }]}>
-            {currentZikr.translation}
-          </Text>
+          {!isArabic && currentZikr.translation ? (
+            <Text style={[styles.translation, { color: colors.mutedForeground + "bb", fontSize: fs.translation }]}>
+              {currentZikr.translation}
+            </Text>
+          ) : null}
         </View>
       )}
 

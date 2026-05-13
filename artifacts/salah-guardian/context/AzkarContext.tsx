@@ -31,6 +31,7 @@ interface AzkarContextType {
   widgetVisible: boolean;
   dismissWidget: () => void;
   showNow: () => Promise<void>;
+  showZikr: (zikr: Zikr) => void;
 }
 
 const AzkarContext = createContext<AzkarContextType | null>(null);
@@ -93,6 +94,18 @@ export function AzkarProvider({ children }: { children: React.ReactNode }) {
     }, s.displaySeconds * 1000);
   }, []);
 
+  const showZikr = useCallback((zikr: Zikr) => {
+    const s = settingsRef.current;
+    setCurrentZikr(zikr);
+    setVisible(true);
+    lastShownRef.current = Date.now();
+    if (s.vibration) azkarSoftVibrate();
+    if (autoHideRef.current) clearTimeout(autoHideRef.current);
+    autoHideRef.current = setTimeout(() => {
+      setVisible(false);
+    }, s.displaySeconds * 1000);
+  }, []);
+
   const dismissWidget = useCallback(() => {
     if (autoHideRef.current) clearTimeout(autoHideRef.current);
     setVisible(false);
@@ -117,7 +130,7 @@ export function AzkarProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AzkarContext.Provider
-      value={{ settings, updateSettings, currentZikr, widgetVisible, dismissWidget, showNow }}
+      value={{ settings, updateSettings, currentZikr, widgetVisible, dismissWidget, showNow, showZikr }}
     >
       {children}
     </AzkarContext.Provider>

@@ -80,6 +80,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="azkar"
+        options={{
+          title: t("tab_azkar"),
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="hand-extended" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: t("tab_settings"),

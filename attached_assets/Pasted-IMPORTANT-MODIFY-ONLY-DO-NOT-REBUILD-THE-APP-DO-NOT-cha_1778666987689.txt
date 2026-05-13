@@ -1,0 +1,196 @@
+IMPORTANT — MODIFY ONLY. DO NOT REBUILD THE APP.
+DO NOT change the existing prayer guidance system, logic, flow, navigation, audio system, timers, alerts, onboarding, settings, or existing working features.
+DO NOT replace screens or rewrite architecture.
+DO NOT remove any current feature.
+ONLY extend the existing app carefully and integrate the new Azkar section cleanly into the current design system.
+
+==================================================
+GOAL
+==================================================
+
+Split the app into 2 main sections/tabs:
+
+1. Prayer Section
+- Keep the current prayer/training/guidance functionality exactly as it is.
+- No redesign of existing prayer logic.
+- No breaking changes.
+
+2. Azkar Section
+- Add a completely separate Azkar experience.
+- Inspired by the attached screenshots from a similar app.
+- Keep the same visual identity/theme of the current app.
+
+==================================================
+MAIN APP STRUCTURE
+==================================================
+
+Create a clean home navigation with 2 primary sections:
+
+- Prayer
+- Azkar
+
+Preferred implementation:
+- Bottom Tab Navigation OR segmented home cards.
+- Smooth modern UX.
+- Preserve all existing routes and logic.
+
+==================================================
+AZKAR SECTION FEATURES
+==================================================
+
+The Azkar section contains TWO MAIN FEATURES:
+
+--------------------------------------------------
+1. Floating Azkar (ALREADY EXISTS)
+--------------------------------------------------
+
+The floating azkar feature already exists.
+DO NOT rebuild it.
+DO NOT remove it.
+ONLY improve and integrate it correctly inside the Azkar section.
+
+VERY IMPORTANT LANGUAGE FIX:
+Currently Arabic + English pronunciation/transliteration appear together.
+
+Required behavior:
+- If app language = Arabic:
+  → show ONLY Arabic text.
+  → remove English pronunciation/transliteration completely.
+
+- If app language = English:
+  → show ONLY English translation.
+  → do NOT show Arabic together with English.
+
+No mixed-language display.
+
+Keep:
+- floating overlay behavior
+- interval timing
+- notifications
+- existing floating mechanics
+
+Only improve presentation and language handling.
+
+--------------------------------------------------
+2. Morning & Evening Azkar
+--------------------------------------------------
+
+Add a dedicated Morning and Evening Azkar module inspired by the attached screenshots.
+
+Required screens:
+- Morning Azkar
+- Evening Azkar
+
+Design inspiration:
+- Large clean zikr cards
+- Rounded cards
+- Counter badge
+- Share button
+- Calm Islamic UI
+- Dark mode support
+- Elegant spacing
+- Arabic typography optimized for readability
+
+==================================================
+AZKAR CARD REQUIREMENTS
+==================================================
+
+Each zikr card should contain:
+
+- Zikr text
+- Repeat counter (example: 1 / 3 / 7)
+- Share button
+- Floating button for this specific zikr
+
+The floating button should:
+- instantly activate this zikr as floating overlay
+- display over other apps using the existing floating system
+- reuse existing overlay infrastructure
+- NOT create a new floating engine
+
+==================================================
+FLOATING AZKAR BEHAVIOR
+==================================================
+
+When user presses floating button on a zikr:
+- That zikr becomes the active floating zikr
+- Overlay appears above apps
+- User can:
+  - drag it
+  - close it
+  - minimize it
+- Keep battery usage optimized
+- Respect Android overlay permissions
+
+==================================================
+UI / UX REQUIREMENTS
+==================================================
+
+Use the attached screenshots as inspiration ONLY.
+Do NOT clone them exactly.
+
+Required style:
+- Professional Islamic design
+- Smooth animations
+- Soft shadows
+- Rounded cards
+- Comfortable spacing
+- Modern typography
+- Consistent with current app colors/theme
+
+Recommended:
+- Morning icon (sun)
+- Evening icon (moon)
+- Minimal elegant top header
+
+==================================================
+TECHNICAL RULES
+==================================================
+
+CRITICAL:
+- DO NOT rewrite the app architecture
+- DO NOT migrate frameworks
+- DO NOT recreate navigation from zero
+- DO NOT touch working prayer functionality
+- DO NOT remove any package unless absolutely necessary
+- Reuse existing components/services whenever possible
+
+ONLY:
+- extend existing structure safely
+- add Azkar module
+- integrate with current floating system
+
+==================================================
+DATA STRUCTURE
+==================================================
+
+Create structured local azkar data:
+- morning azkar array
+- evening azkar array
+
+Each item contains:
+- id
+- arabicText
+- englishText
+- repeatCount
+- category
+
+Prepare structure for future scalability.
+
+==================================================
+FINAL VERIFICATION BEFORE FINISHING
+==================================================
+
+Before completing:
+- Ensure prayer section still works 100%
+- Ensure no existing feature disappeared
+- Ensure floating azkar still works
+- Ensure language switching works correctly
+- Ensure no Arabic/English mixed text appears
+- Ensure Android back behavior still works
+- Ensure layout respects device safe areas and navigation bars
+- Ensure Samsung devices render correctly
+
+DO NOT deliver partial implementation.
+DO NOT leave TODO placeholders.
+DO NOT break existing functionality.

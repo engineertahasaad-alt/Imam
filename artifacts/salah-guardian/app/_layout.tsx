@@ -39,6 +39,8 @@ function RootLayoutNav() {
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="custom-azkar" />
+      <Stack.Screen name="azkar-morning" />
+      <Stack.Screen name="azkar-evening" />
     </Stack>
   );
 }
