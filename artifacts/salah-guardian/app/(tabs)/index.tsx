@@ -3,7 +3,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Modal,
   Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -16,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CelebrationBanner } from "@/components/CelebrationBanner";
 import { DetectionModal } from "@/components/DetectionModal";
 import { PrayerAlertBanner } from "@/components/PrayerAlertBanner";
+import { QiblaCard } from "@/components/QiblaCard";
 import { TrainingModal } from "@/components/TrainingModal";
 import { useApp } from "@/context/AppContext";
 import { useAzkar } from "@/context/AzkarContext";
@@ -29,17 +32,10 @@ const TAB_H = Platform.OS === "web" ? 84 : 62;
 const RAKAAT_MAP: Record<string, number> = {
   Fajr: 2, Dhuhr: 4, Asr: 4, Maghrib: 3, Isha: 4,
 };
-function getRakaatCount(prayerName: string): number {
-  return RAKAAT_MAP[prayerName] ?? 4;
-}
+function getRakaatCount(n: string) { return RAKAAT_MAP[n] ?? 4; }
 
-// ── Compact circular icon button ─────────────────────────────────────────────
 function IconAction({
-  icon,
-  label,
-  onPress,
-  bg,
-  iconColor,
+  icon, label, onPress, bg, iconColor,
 }: {
   icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
   label: string;
@@ -65,48 +61,36 @@ export default function HomeScreen() {
   const { t, isArabic } = useTranslation();
 
   const {
-    settings,
-    isLoading,
-    prayerStatuses,
-    currentPrayer,
-    nextPrayer,
-    nextPrayerTime,
-    timeRemaining,
-    streak,
-    todayDetectedCount,
-    markPrayerDetected,
-    calibration,
-    refreshPrayerTimes,
-    refreshCalibration,
+    settings, isLoading, prayerStatuses, currentPrayer,
+    nextPrayer, nextPrayerTime, timeRemaining, streak,
+    todayDetectedCount, markPrayerDetected, calibration,
+    refreshPrayerTimes, refreshCalibration,
   } = useApp();
 
   const { dailyCompletion, refreshCompletion } = useAzkar();
 
   const [detectionVisible, setDetectionVisible] = useState(false);
   const [trainingVisible, setTrainingVisible]   = useState(false);
+  const [qiblaVisible, setQiblaVisible]         = useState(false);
   const [refreshing, setRefreshing]             = useState(false);
 
   const [bannerPrayer, setBannerPrayer]       = useState<string | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
-  const prevNextPrayerRef                     = useRef<string>("");
+  const prevNextRef = useRef<string>("");
 
   useEffect(() => {
     if (!nextPrayer) return;
-    if (nextPrayer !== prevNextPrayerRef.current) {
-      prevNextPrayerRef.current = nextPrayer;
+    if (nextPrayer !== prevNextRef.current) {
+      prevNextRef.current = nextPrayer;
       setBannerDismissed(false);
     }
-    if (timeRemaining > 0 && timeRemaining <= ALERT_THRESHOLD_MS) {
-      setBannerPrayer(nextPrayer);
-    }
+    if (timeRemaining > 0 && timeRemaining <= ALERT_THRESHOLD_MS) setBannerPrayer(nextPrayer);
   }, [timeRemaining, nextPrayer]);
 
   useEffect(() => { refreshCompletion(); }, []);
 
-  const bannerPrayerDetected =
-    bannerPrayer != null &&
+  const bannerPrayerDetected = bannerPrayer != null &&
     prayerStatuses.find((p) => p.name === bannerPrayer)?.detected === true;
-
   const showBanner = bannerPrayer !== null && !bannerDismissed && !bannerPrayerDetected;
 
   const vibrationEnabled  = settings?.vibrationEnabled  ?? true;
@@ -120,53 +104,56 @@ export default function HomeScreen() {
     setTimeout(() => setRefreshing(false), 800);
   }
 
-  async function handleDetectionComplete(rakaatCount: number, confidence: number, durationMs: number) {
+  async function handleDetectionComplete(rakaat: number, confidence: number, durationMs: number) {
     setDetectionVisible(false);
     const prayerName = currentPrayer || nextPrayer;
-    if (prayerName) await markPrayerDetected(prayerName, confidence, rakaatCount, durationMs);
+    if (prayerName) await markPrayerDetected(prayerName, confidence, rakaat, durationMs);
   }
 
-  const paddingTop    = insets.top + (Platform.OS === "web" ? 60 : 10);
-  const paddingBottom = TAB_H + insets.bottom;
   const countdownText = formatCountdown(timeRemaining);
   const nextTimeText  = nextPrayerTime ? formatTime(nextPrayerTime) : "--:--";
-
-  // Greeting
   const greeting = isArabic
     ? `السلام عليكم${userName ? `، ${userName}` : ""}`
     : `Peace be upon you${userName ? `, ${userName}` : ""}`;
+
+  const paddingTop    = insets.top  + (Platform.OS === "web" ? 60 : 10);
+  const paddingBottom = insets.bottom + TAB_H;
 
   if (isLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
         <MaterialCommunityIcons name="mosque" size={36} color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
-          {t("calculating")}
-        </Text>
+        <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>{t("calculating")}</Text>
       </View>
     );
   }
 
   return (
     <>
-      <ScrollView
-        style={{ flex: 1, backgroundColor: colors.background }}
-        contentContainerStyle={[styles.container, { paddingTop, paddingBottom }]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
-        }
+      {/* ── Main layout — no scroll, everything fits ─────────────── */}
+      <View
+        style={[
+          styles.root,
+          { backgroundColor: colors.background, paddingTop, paddingBottom },
+        ]}
       >
+        {/* Celebration — only mounts when actually triggered */}
+        {todayDetectedCount === 5 && (
+          <View style={{ paddingHorizontal: 14, marginBottom: 10 }}>
+            <CelebrationBanner visible userName={userName} streak={streak} />
+          </View>
+        )}
+
         {/* ── HEADER ─────────────────────────────────────────────── */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingHorizontal: 14 }]}>
           <View style={styles.headerLeft}>
             <Text style={[styles.greeting, { color: colors.foreground }]} numberOfLines={1}>
               {greeting}
             </Text>
             {nextPrayer ? (
-              <View style={styles.nextPrayerChip}>
+              <View style={styles.nextChip}>
                 <MaterialCommunityIcons name="clock-outline" size={11} color={colors.primary} />
-                <Text style={[styles.nextPrayerChipText, { color: colors.primary }]}>
+                <Text style={[styles.nextChipText, { color: colors.primary }]}>
                   {isArabic
                     ? `${PRAYER_ARABIC[nextPrayer] ?? nextPrayer} · ${nextTimeText}`
                     : `${nextPrayer} · ${nextTimeText}`}
@@ -182,60 +169,40 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Celebration */}
-        <CelebrationBanner visible={todayDetectedCount === 5} userName={userName} streak={streak} />
-
         {/* ── PRAYER CARD ─────────────────────────────────────────── */}
         <LinearGradient
-          colors={colors.isDark ? ["#0a2e1f", "#0d2d1a", "#162032"] : ["#065f46", "#047857", "#059669"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.sectionCard}
+          colors={colors.isDark
+            ? ["#0a2e1f", "#0d2d1a", "#162032"]
+            : ["#065f46", "#047857", "#059669"]}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={[styles.card, { marginHorizontal: 14 }]}
         >
-          {/* Decorative glow rings */}
-          <View style={[styles.glowRing, { borderColor: "rgba(52,211,153,0.12)", top: -30, right: -30, width: 140, height: 140, borderRadius: 70 }]} />
-          <View style={[styles.glowRing, { borderColor: "rgba(52,211,153,0.07)", top: -55, right: -55, width: 200, height: 200, borderRadius: 100 }]} />
+          <View style={[styles.glowRing, { borderColor: "rgba(52,211,153,0.12)", top: -28, right: -28, width: 130, height: 130, borderRadius: 65 }]} />
+          <View style={[styles.glowRing, { borderColor: "rgba(52,211,153,0.07)", top: -50, right: -50, width: 190, height: 190, borderRadius: 95 }]} />
 
-          {/* Section label */}
-          <View style={styles.sectionLabelRow}>
-            <View style={[styles.sectionIconWrap, { backgroundColor: "rgba(52,211,153,0.18)" }]}>
-              <MaterialCommunityIcons name="mosque" size={18} color="#34d399" />
+          {/* Section label + countdown inline */}
+          <View style={styles.cardTopRow}>
+            <View style={styles.cardLabelGroup}>
+              <View style={[styles.cardIconWrap, { backgroundColor: "rgba(52,211,153,0.18)" }]}>
+                <MaterialCommunityIcons name="mosque" size={16} color="#34d399" />
+              </View>
+              <Text style={styles.cardTitle}>{isArabic ? "الصلاة" : "Prayer"}</Text>
             </View>
-            <Text style={styles.sectionLabel}>
-              {isArabic ? "الصلاة" : "Prayer"}
-            </Text>
+            {nextPrayer && (
+              <View style={styles.countdownInline}>
+                <Text style={styles.countdownArabic}>{PRAYER_ARABIC[nextPrayer] ?? nextPrayer}</Text>
+                <Text style={styles.countdownText}>{countdownText}</Text>
+              </View>
+            )}
           </View>
-
-          {/* Next prayer countdown */}
-          {nextPrayer ? (
-            <View style={styles.countdownBlock}>
-              <Text style={styles.nextPrayerArabic}>
-                {PRAYER_ARABIC[nextPrayer] ?? nextPrayer}
-              </Text>
-              <Text style={styles.countdown}>{countdownText}</Text>
-              <Text style={styles.countdownSub}>
-                {isArabic ? `المتبقي · ${nextTimeText}` : `Remaining · ${nextTimeText}`}
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.countdownBlock}>
-              <Text style={styles.countdownSub}>
-                {isArabic ? "حدد موقعك لعرض أوقات الصلاة" : "Set location for prayer times"}
-              </Text>
-            </View>
-          )}
 
           {/* Prayer schedule strip */}
           {prayerStatuses.length > 0 && (
-            <View style={[styles.scheduleStrip, { backgroundColor: "rgba(0,0,0,0.25)" }]}>
+            <View style={[styles.scheduleStrip, { backgroundColor: "rgba(0,0,0,0.22)" }]}>
               {prayerStatuses.map((prayer) => {
                 const isCurrent = prayer.name === currentPrayer;
                 const isNext    = prayer.name === nextPrayer;
-                const col = isCurrent
-                  ? "#34d399"
-                  : isNext
-                    ? "rgba(255,255,255,0.9)"
-                    : "rgba(255,255,255,0.4)";
+                const col = isCurrent ? "#34d399" : isNext ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.4)";
                 return (
                   <View key={prayer.name} style={styles.scheduleCell}>
                     <View style={[
@@ -249,7 +216,7 @@ export default function HomeScreen() {
                       {prayer.detected && <Text style={{ fontSize: 7, color: "#0d1321" }}>✓</Text>}
                     </View>
                     <Text style={[styles.scheduleArabic, { color: col }]}>{prayer.arabic}</Text>
-                    <Text style={[styles.scheduleTime, { color: col }]}>
+                    <Text style={[styles.scheduleTime,   { color: col }]}>
                       {prayer.time ? formatTime(prayer.time) : "--:--"}
                     </Text>
                     {isCurrent && <View style={styles.scheduleActiveLine} />}
@@ -261,139 +228,91 @@ export default function HomeScreen() {
 
           {/* Action icons */}
           <View style={styles.iconGrid}>
-            <IconAction
-              icon="play-circle-outline"
-              label={isArabic ? "ابدأ الصلاة" : "Start Prayer"}
-              onPress={() => setDetectionVisible(true)}
-              bg="rgba(52,211,153,0.22)"
-              iconColor="#34d399"
-            />
-            <IconAction
-              icon="school-outline"
-              label={isArabic ? "تدريب الصلاة" : "Training"}
-              onPress={() => setTrainingVisible(true)}
-              bg="rgba(251,191,36,0.18)"
-              iconColor="#fbbf24"
-            />
-            <IconAction
-              icon="clock-time-five-outline"
-              label={isArabic ? "مواقيت الصلاة" : "Prayer Times"}
-              onPress={() => router.push("/(tabs)/log")}
-              bg="rgba(99,102,241,0.22)"
-              iconColor="#818cf8"
-            />
-            <IconAction
-              icon="compass-outline"
-              label={isArabic ? "اتجاه القبلة" : "Qibla"}
-              onPress={() => router.push("/(tabs)/stats")}
-              bg="rgba(244,114,182,0.18)"
-              iconColor="#f472b6"
-            />
+            <IconAction icon="play-circle-outline" label={isArabic ? "ابدأ الصلاة" : "Start Prayer"}
+              onPress={() => setDetectionVisible(true)} bg="rgba(52,211,153,0.22)" iconColor="#34d399" />
+            <IconAction icon="school-outline" label={isArabic ? "تدريب الصلاة" : "Training"}
+              onPress={() => setTrainingVisible(true)} bg="rgba(251,191,36,0.18)" iconColor="#fbbf24" />
+            <IconAction icon="clock-time-five-outline" label={isArabic ? "مواقيت الصلاة" : "Prayer Times"}
+              onPress={() => router.push("/(tabs)/log")} bg="rgba(99,102,241,0.22)" iconColor="#818cf8" />
+            <IconAction icon="compass-outline" label={isArabic ? "اتجاه القبلة" : "Qibla"}
+              onPress={() => setQiblaVisible(true)} bg="rgba(244,114,182,0.18)" iconColor="#f472b6" />
           </View>
         </LinearGradient>
 
         {/* ── AZKAR CARD ─────────────────────────────────────────── */}
         <LinearGradient
-          colors={colors.isDark ? ["#0e1a3a", "#12203f", "#162032"] : ["#1e3a5f", "#1e40af", "#2563eb"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.sectionCard}
+          colors={colors.isDark
+            ? ["#0e1a3a", "#12203f", "#162032"]
+            : ["#1e3a5f", "#1e40af", "#2563eb"]}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={[styles.card, { marginHorizontal: 14 }]}
         >
-          {/* Decorative glow rings */}
-          <View style={[styles.glowRing, { borderColor: "rgba(129,140,248,0.14)", top: -30, right: -30, width: 140, height: 140, borderRadius: 70 }]} />
-          <View style={[styles.glowRing, { borderColor: "rgba(129,140,248,0.08)", top: -55, right: -55, width: 200, height: 200, borderRadius: 100 }]} />
+          <View style={[styles.glowRing, { borderColor: "rgba(129,140,248,0.14)", top: -28, right: -28, width: 130, height: 130, borderRadius: 65 }]} />
+          <View style={[styles.glowRing, { borderColor: "rgba(129,140,248,0.08)", top: -50, right: -50, width: 190, height: 190, borderRadius: 95 }]} />
 
-          {/* Section label */}
-          <View style={styles.sectionLabelRow}>
-            <View style={[styles.sectionIconWrap, { backgroundColor: "rgba(139,92,246,0.22)" }]}>
-              <Text style={{ fontSize: 16 }}>🤲</Text>
+          <View style={styles.cardTopRow}>
+            <View style={styles.cardLabelGroup}>
+              <View style={[styles.cardIconWrap, { backgroundColor: "rgba(139,92,246,0.22)" }]}>
+                <Text style={{ fontSize: 15 }}>🤲</Text>
+              </View>
+              <Text style={styles.cardTitle}>{isArabic ? "الأذكار" : "Azkar"}</Text>
             </View>
-            <Text style={styles.sectionLabel}>
-              {isArabic ? "الأذكار" : "Azkar"}
-            </Text>
-
-            {/* Today's completion chips */}
+            {/* Completion chips */}
             <View style={styles.completionChips}>
               {dailyCompletion.morning && (
                 <View style={[styles.completionChip, { backgroundColor: "rgba(251,191,36,0.22)" }]}>
-                  <Text style={{ fontSize: 11 }}>🌤️</Text>
+                  <Text style={{ fontSize: 12 }}>🌤️</Text>
                 </View>
               )}
               {dailyCompletion.evening && (
                 <View style={[styles.completionChip, { backgroundColor: "rgba(139,92,246,0.25)" }]}>
-                  <Text style={{ fontSize: 11 }}>🌙</Text>
+                  <Text style={{ fontSize: 12 }}>🌙</Text>
                 </View>
               )}
             </View>
           </View>
 
-          {/* Subtitle */}
-          <Text style={styles.azkarSubtitle}>
+          <Text style={styles.azkarSub}>
             {isArabic ? "وردك اليومي والتسبيحات الذكية" : "Daily dhikr & smart reminders"}
           </Text>
 
-          {/* Action icons */}
           <View style={styles.iconGrid}>
-            <IconAction
-              icon="weather-sunny"
-              label={isArabic ? "أذكار الصباح" : "Morning"}
-              onPress={() => router.push("/azkar-morning")}
-              bg="rgba(251,191,36,0.22)"
-              iconColor="#fbbf24"
-            />
-            <IconAction
-              icon="weather-night"
-              label={isArabic ? "أذكار المساء" : "Evening"}
-              onPress={() => router.push("/azkar-evening")}
-              bg="rgba(139,92,246,0.25)"
-              iconColor="#a78bfa"
-            />
-            <IconAction
-              icon="bell-ring-outline"
-              label={isArabic ? "أذكار عامة" : "Floating"}
-              onPress={() => router.push("/(tabs)/azkar")}
-              bg="rgba(52,211,153,0.18)"
-              iconColor="#34d399"
-            />
-            <IconAction
-              icon="circle-outline"
-              label={isArabic ? "التسبيح" : "Tasbeeh"}
-              onPress={() => router.push("/(tabs)/azkar")}
-              bg="rgba(244,114,182,0.18)"
-              iconColor="#f472b6"
-            />
+            <IconAction icon="weather-sunny" label={isArabic ? "أذكار الصباح" : "Morning"}
+              onPress={() => router.push("/azkar-morning")} bg="rgba(251,191,36,0.22)" iconColor="#fbbf24" />
+            <IconAction icon="weather-night" label={isArabic ? "أذكار المساء" : "Evening"}
+              onPress={() => router.push("/azkar-evening")} bg="rgba(139,92,246,0.25)" iconColor="#a78bfa" />
+            <IconAction icon="bell-ring-outline" label={isArabic ? "أذكار عامة" : "Floating"}
+              onPress={() => router.push("/(tabs)/azkar")} bg="rgba(52,211,153,0.18)" iconColor="#34d399" />
+            <IconAction icon="circle-outline" label={isArabic ? "التسبيح" : "Tasbeeh"}
+              onPress={() => router.push("/(tabs)/azkar")} bg="rgba(244,114,182,0.18)" iconColor="#f472b6" />
           </View>
         </LinearGradient>
 
         {/* ── STATS ROW ──────────────────────────────────────────── */}
-        <View style={[styles.statsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.statsRow, { backgroundColor: colors.card, borderColor: colors.border, marginHorizontal: 14 }]}>
           <View style={styles.statCell}>
             <View style={[styles.statIcon, { backgroundColor: colors.gold + "22" }]}>
-              <MaterialCommunityIcons name="fire" size={15} color={colors.gold} />
+              <MaterialCommunityIcons name="fire" size={14} color={colors.gold} />
             </View>
             <Text style={[styles.statNumber, { color: colors.foreground }]}>{streak}</Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
               {isArabic ? "أيام متتالية" : "Day streak"}
             </Text>
           </View>
-
           <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-
           <View style={styles.statCell}>
             <View style={[styles.statIcon, { backgroundColor: colors.primary + "22" }]}>
-              <MaterialCommunityIcons name="check-circle-outline" size={15} color={colors.primary} />
+              <MaterialCommunityIcons name="check-circle-outline" size={14} color={colors.primary} />
             </View>
             <Text style={[styles.statNumber, { color: colors.foreground }]}>{todayDetectedCount}/5</Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
               {isArabic ? "اليوم" : "Today"}
             </Text>
           </View>
-
           <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-
           <View style={styles.statCell}>
             <View style={[styles.statIcon, { backgroundColor: "#f59e0b22" }]}>
-              <Text style={{ fontSize: 13 }}>🌤️</Text>
+              <Text style={{ fontSize: 12 }}>🌤️</Text>
             </View>
             <Text style={[styles.statNumber, { color: colors.foreground }]}>
               {[dailyCompletion.morning, dailyCompletion.evening].filter(Boolean).length}/2
@@ -404,12 +323,42 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* ── POCKET HINT ─────────────────────────────────────────── */}
+        {/* Pocket hint */}
         <Text style={[styles.hint, { color: colors.mutedForeground }]}>
           {t("pocket_hint")}
         </Text>
-      </ScrollView>
+      </View>
 
+      {/* ── QIBLA MODAL ────────────────────────────────────────── */}
+      <Modal visible={qiblaVisible} transparent animationType="slide" onRequestClose={() => setQiblaVisible(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setQiblaVisible(false)}>
+          <Pressable style={[styles.modalSheet, { backgroundColor: colors.background, paddingBottom: insets.bottom + 20 }]}>
+            {/* Handle */}
+            <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
+            {/* Close row */}
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+                {isArabic ? "اتجاه القبلة" : "Qibla Direction"}
+              </Text>
+              <TouchableOpacity onPress={() => setQiblaVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Feather name="x" size={22} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+            {settings.latitude && settings.longitude ? (
+              <QiblaCard userLat={settings.latitude} userLng={settings.longitude} />
+            ) : (
+              <View style={[styles.noLocBox, { borderColor: colors.border }]}>
+                <MaterialCommunityIcons name="map-marker-off" size={28} color={colors.mutedForeground} />
+                <Text style={[styles.noLocText, { color: colors.mutedForeground }]}>
+                  {isArabic ? "يرجى تفعيل الموقع لعرض اتجاه القبلة" : "Enable location to show Qibla direction"}
+                </Text>
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ── DETECTION / TRAINING / ALERT MODALS ─────────────────── */}
       <DetectionModal
         visible={detectionVisible}
         prayerName={currentPrayer || nextPrayer}
@@ -445,143 +394,142 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
   loadingText: { fontSize: 15 },
 
-  container: { paddingHorizontal: 14, gap: 14 },
+  root: {
+    flex: 1,
+    gap: 12,
+    justifyContent: "center",
+  },
 
   // Header
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-  },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   headerLeft: { flex: 1, gap: 3 },
   greeting: { fontSize: 16, fontWeight: "700", letterSpacing: -0.3 },
-  nextPrayerChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  nextPrayerChipText: { fontSize: 12, fontWeight: "600" },
+  nextChip: { flexDirection: "row", alignItems: "center", gap: 4 },
+  nextChipText: { fontSize: 12, fontWeight: "600" },
   headerBtn: {
-    width: 36, height: 36, borderRadius: 18, borderWidth: 1,
+    width: 34, height: 34, borderRadius: 17, borderWidth: 1,
     alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
 
-  // Section cards
-  sectionCard: {
-    borderRadius: 22,
+  // Cards
+  card: {
+    borderRadius: 20,
     overflow: "hidden",
-    padding: 18,
-    gap: 14,
+    padding: 14,
+    gap: 10,
     elevation: 6,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
   },
-  glowRing: {
-    position: "absolute",
-    borderWidth: 1,
-  },
+  glowRing: { position: "absolute", borderWidth: 1 },
 
-  // Section label
-  sectionLabelRow: {
+  cardTopRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    justifyContent: "space-between",
   },
-  sectionIconWrap: {
-    width: 34, height: 34, borderRadius: 17,
+  cardLabelGroup: { flexDirection: "row", alignItems: "center", gap: 8 },
+  cardIconWrap: {
+    width: 30, height: 30, borderRadius: 15,
     alignItems: "center", justifyContent: "center",
   },
-  sectionLabel: {
-    fontSize: 20, fontWeight: "800", color: "#fff", flex: 1,
-    letterSpacing: -0.3,
-  },
-  completionChips: { flexDirection: "row", gap: 4 },
-  completionChip: {
-    width: 26, height: 26, borderRadius: 13,
-    alignItems: "center", justifyContent: "center",
+  cardTitle: { fontSize: 18, fontWeight: "800", color: "#fff", letterSpacing: -0.3 },
+
+  // Inline countdown
+  countdownInline: { alignItems: "flex-end" },
+  countdownArabic: { fontSize: 13, color: "rgba(255,255,255,0.55)", fontWeight: "300" },
+  countdownText: {
+    fontSize: 26, fontWeight: "200", color: "#fff",
+    letterSpacing: 1.5, fontVariant: ["tabular-nums"],
   },
 
-  // Prayer countdown
-  countdownBlock: { alignItems: "center", paddingVertical: 4 },
-  nextPrayerArabic: {
-    fontSize: 28, fontWeight: "300", color: "rgba(255,255,255,0.7)",
-    marginBottom: 2,
-  },
-  countdown: {
-    fontSize: 52, fontWeight: "200", color: "#fff",
-    letterSpacing: 2,
-    fontVariant: ["tabular-nums"],
-  },
-  countdownSub: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 2 },
-
-  // Prayer schedule strip
+  // Schedule strip
   scheduleStrip: {
     flexDirection: "row",
     justifyContent: "space-between",
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
   },
-  scheduleCell: { flex: 1, alignItems: "center", gap: 3 },
+  scheduleCell: { flex: 1, alignItems: "center", gap: 2 },
   scheduleDot: {
-    width: 13, height: 13, borderRadius: 7,
+    width: 12, height: 12, borderRadius: 6,
     alignItems: "center", justifyContent: "center", marginBottom: 1,
   },
   scheduleArabic: { fontSize: 10, fontWeight: "600", textAlign: "center" },
   scheduleTime:   { fontSize: 9, fontVariant: ["tabular-nums"], textAlign: "center" },
   scheduleActiveLine: {
-    position: "absolute", bottom: -4,
+    position: "absolute", bottom: -3,
     left: "20%", right: "20%",
     height: 2, borderRadius: 1, backgroundColor: "#34d399",
   },
 
   // Azkar subtitle
-  azkarSubtitle: {
-    fontSize: 12, color: "rgba(255,255,255,0.55)",
-    marginTop: -6,
+  azkarSub: { fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: -4 },
+
+  // Completion chips
+  completionChips: { flexDirection: "row", gap: 4 },
+  completionChip: {
+    width: 24, height: 24, borderRadius: 12,
+    alignItems: "center", justifyContent: "center",
   },
 
   // Icon grid
-  iconGrid: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  iconAction: {
-    flex: 1,
-    alignItems: "center",
-    gap: 7,
-  },
+  iconGrid: { flexDirection: "row", justifyContent: "space-between" },
+  iconAction: { flex: 1, alignItems: "center", gap: 5 },
   iconCircle: {
-    width: 52, height: 52, borderRadius: 26,
+    width: 46, height: 46, borderRadius: 23,
     alignItems: "center", justifyContent: "center",
   },
-  iconLabel: {
-    fontSize: 10.5,
-    fontWeight: "600",
-    textAlign: "center",
-  },
+  iconLabel: { fontSize: 10, fontWeight: "600", textAlign: "center" },
 
   // Stats row
   statsRow: {
     flexDirection: "row",
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 8,
     alignItems: "center",
   },
-  statCell: { flex: 1, alignItems: "center", gap: 3 },
+  statCell: { flex: 1, alignItems: "center", gap: 2 },
   statIcon: {
-    width: 28, height: 28, borderRadius: 14,
-    alignItems: "center", justifyContent: "center", marginBottom: 2,
+    width: 26, height: 26, borderRadius: 13,
+    alignItems: "center", justifyContent: "center", marginBottom: 1,
   },
-  statNumber: { fontSize: 16, fontWeight: "700", letterSpacing: -0.5 },
-  statLabel:  { fontSize: 10, textAlign: "center" },
-  statDivider: { width: StyleSheet.hairlineWidth, height: 36, marginHorizontal: 4 },
+  statNumber: { fontSize: 15, fontWeight: "700", letterSpacing: -0.5 },
+  statLabel:  { fontSize: 9, textAlign: "center" },
+  statDivider: { width: StyleSheet.hairlineWidth, height: 34, marginHorizontal: 4 },
 
-  hint: { textAlign: "center", fontSize: 11, lineHeight: 16, marginTop: -4 },
+  hint: { textAlign: "center", fontSize: 11, lineHeight: 16 },
+
+  // Qibla modal
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    gap: 14,
+  },
+  modalHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    alignSelf: "center", marginBottom: 4,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  modalTitle: { fontSize: 17, fontWeight: "700" },
+  noLocBox: {
+    borderRadius: 14, borderWidth: 1,
+    padding: 24, alignItems: "center", gap: 10,
+  },
+  noLocText: { fontSize: 13, textAlign: "center", lineHeight: 18 },
 });
