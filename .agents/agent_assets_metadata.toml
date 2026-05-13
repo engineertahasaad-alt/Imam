@@ -12,3 +12,9 @@ id = "jpnNInt3pT_3P-pVtZl4L"
 uri = "file://artifacts/salah-guardian/assets/images/splash.png"
 type = "image"
 title = "salah guardian splash background"
+
+[[generated]]
+id = "gZnOajAgaQoK7TE9UaWLE"
+uri = "file://artifacts/salah-guardian/assets/images/adaptive-icon.png"
+type = "image"
+title = "salah guardian adaptive icon foreground"
