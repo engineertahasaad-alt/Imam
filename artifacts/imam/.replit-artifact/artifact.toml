@@ -1,6 +1,6 @@
 kind = "mobile"
 previewPath = "/"
-title = "Salah Guardian"
+title = "Imam"
 version = "1.0.0"
 id = "artifacts/salah-guardian"
 router = "expo-domain"
@@ -16,11 +16,11 @@ paths = [ "/" ]
 localPort = 25111
 
 [services.development]
-run = "pnpm --filter @workspace/salah-guardian run dev"
+run = "pnpm --filter @workspace/imam run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/salah-guardian", "run", "build" ]
-run = [ "pnpm", "--filter", "@workspace/salah-guardian", "run", "serve" ]
+build = [ "pnpm", "--filter", "@workspace/imam", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/imam", "run", "serve" ]
 
 [services.env]
 PORT = "25111"

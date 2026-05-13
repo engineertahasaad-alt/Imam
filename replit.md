@@ -13,7 +13,7 @@ Islamic prayer tracking mobile app that detects actual prayer movements using sm
 ## Architecture
 
 ```
-artifacts/salah-guardian/
+artifacts/imam/
 ├── app/
 │   ├── (tabs)/          # Main tab screens: index (Home), analytics, settings
 │   └── onboarding/      # Welcome → Setup → Calibration flow
@@ -57,7 +57,7 @@ artifacts/salah-guardian/
 
 ## User Preferences
 
-- App name: **Imam** (was Salah Guardian — dir name unchanged: `artifacts/salah-guardian`)
+- App name: **Imam** — folder: `artifacts/imam`
 - Colors: dark bg `#0d1321`, primary emerald `#34d399`, gold `#f59e0b`
 - No camera, no microphone, no cloud — fully on-device
 - expo-notifications crashes on Android Expo Go SDK53 — already wrapped in try/catch
