@@ -4,6 +4,7 @@
  * Uses PanResponder for drag + edge-snapping. Animated slide-in/out from side edge.
  */
 
+import { Audio } from "expo-av";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -48,8 +49,8 @@ export function AzkarFloatingWidget() {
   }, [settings.position]);
 
   // Animation values
-  const slideAnim  = useRef(new Animated.Value(0)).current;  // 0=hidden 1=visible
-  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim    = useRef(new Animated.Value(0)).current;
+  const opacityAnim  = useRef(new Animated.Value(0)).current;
   const countdownAnim = useRef(new Animated.Value(1)).current;
 
   // Vertical drag position (starts near center)
@@ -65,14 +66,42 @@ export function AzkarFloatingWidget() {
     ],
   });
 
-  // Re-compute slide direction when snap side changes
   const translateXRef = useRef(translateX);
   translateXRef.current = translateX;
 
-  // useNativeDriver not supported on web
   const nativeDrv = Platform.OS !== "web";
 
-  // Show / hide animation
+  // ── Sound on appear ───────────────────────────────────────────────────────
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  useEffect(() => {
+    if (widgetVisible && currentZikr && Platform.OS !== "web") {
+      Audio.Sound.createAsync(
+        require("@/assets/audio/beep.wav"),
+        { volume: 0.5, shouldPlay: true }
+      )
+        .then(({ sound }) => {
+          soundRef.current = sound;
+          sound.setOnPlaybackStatusUpdate((status) => {
+            if (status.isLoaded && status.didJustFinish) {
+              sound.unloadAsync().catch(() => {});
+              soundRef.current = null;
+            }
+          });
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.stopAsync().catch(() => {});
+        soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
+      }
+    };
+  }, [widgetVisible]);
+
+  // ── Show / hide animation ─────────────────────────────────────────────────
   useEffect(() => {
     if (widgetVisible && currentZikr) {
       countdownAnim.setValue(1);
@@ -93,25 +122,20 @@ export function AzkarFloatingWidget() {
     }
   }, [widgetVisible, currentZikr]);
 
-  // ── Drag gesture ─────────────────────────────────────────────────────────────
+  // ── Drag gesture ──────────────────────────────────────────────────────────
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder:  (_, g) => Math.abs(g.dy) > 4 || Math.abs(g.dx) > 4,
 
       onPanResponderMove: (_, g) => {
-        // Allow vertical drag
         const newY = Math.max(60, Math.min(SCREEN_H - 160, posY.current + g.dy));
         dragY.setValue(newY);
-        // Hint at side based on horizontal drag
       },
 
       onPanResponderRelease: (_, g) => {
-        // Commit vertical position
         posY.current = Math.max(60, Math.min(SCREEN_H - 160, posY.current + g.dy));
         dragY.setValue(posY.current);
-
-        // Snap to side based on horizontal position if dragged significantly
         if (Math.abs(g.dx) > 40) {
           setSnapSide(g.moveX < SCREEN_W / 2 ? -1 : 1);
         }
@@ -119,11 +143,8 @@ export function AzkarFloatingWidget() {
     })
   ).current;
 
-  // Never completely unmount so exit animations can play;
-  // block touches when invisible so we don't steal taps from the app
   const fs = FONT_SIZES[settings.fontSize] ?? FONT_SIZES.medium;
 
-  // Horizontal offset from the appropriate edge
   const leftPos  = snapSide === -1 ? EDGE_MARGIN : undefined;
   const rightPos = snapSide === 1  ? EDGE_MARGIN : undefined;
 
@@ -162,7 +183,7 @@ export function AzkarFloatingWidget() {
         </TouchableOpacity>
       </View>
 
-      {/* Zikr text — language-aware, no mixed display */}
+      {/* Zikr text */}
       {currentZikr && (
         <View style={styles.body}>
           <Text
@@ -219,7 +240,6 @@ const styles = StyleSheet.create({
     shadowRadius:  12,
     elevation:     12,
     zIndex:        999,
-    // Web only: pointerEvents
     ...(Platform.OS === "web" ? { cursor: "grab" } as any : {}),
   },
 
@@ -266,11 +286,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 34,
     writingDirection: "rtl",
-  },
-  roman: {
-    textAlign:  "center",
-    fontStyle:  "italic",
-    lineHeight: 16,
   },
   translation: {
     textAlign: "center",

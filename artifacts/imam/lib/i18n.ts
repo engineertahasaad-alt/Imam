@@ -3,8 +3,8 @@ export type Language = "en" | "ar";
 const en = {
   // ── Tabs ────────────────────────────────────────────────────────────────────
   tab_home:     "Home",
-  tab_log:      "Prayer Log",
-  tab_stats:    "Statistics",
+  tab_log:      "Prayers",
+  tab_qibla:    "Qibla",
   tab_azkar:    "Azkar",
   tab_settings: "Settings",
 
@@ -193,8 +193,8 @@ const en = {
 const ar: { [K in keyof typeof en]: string } = {
   // ── Tabs ────────────────────────────────────────────────────────────────────
   tab_home:     "الرئيسية",
-  tab_log:      "سجل الصلاة",
-  tab_stats:    "الإحصاء",
+  tab_log:      "الصلوات",
+  tab_qibla:    "القبلة",
   tab_azkar:    "الأذكار",
   tab_settings: "الإعدادات",
 

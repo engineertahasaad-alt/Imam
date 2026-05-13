@@ -258,64 +258,9 @@ export const AZKAR: Zikr[] = [
     translation: "All praise is due to Allah",
   },
   {
-    arabic: "لَا إِلَهَ إِلَّا اللَّهُ",
-    transliteration: "Lā ilāha illallāh",
-    translation: "There is no god but Allah",
-  },
-  {
-    arabic: "أَسْتَغْفِرُ اللَّهَ",
-    transliteration: "Astaghfirullāh",
-    translation: "I seek forgiveness from Allah",
-  },
-  {
-    arabic: "اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَى نَبِيِّنَا مُحَمَّدٍ",
-    transliteration: "Allāhumma ṣalli wa sallim 'alā nabiyyinā Muḥammad",
-    translation: "O Allah, send blessings upon our Prophet Muhammad",
-  },
-  {
     arabic: "اللَّهُ أَكْبَرُ",
     transliteration: "Allāhu Akbar",
     translation: "Allah is the Greatest",
-  },
-  {
-    arabic: "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ",
-    transliteration: "Lā ḥawla wa lā quwwata illā billāh",
-    translation: "No power except with Allah",
-  },
-  {
-    arabic: "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
-    transliteration: "Subḥāna Allāhi wa biḥamdih",
-    translation: "Glory and praise be to Allah",
-  },
-  {
-    arabic: "سُبْحَانَ اللَّهِ الْعَظِيمِ",
-    transliteration: "Subḥāna Allāhil Aẓīm",
-    translation: "Glory be to Allah, the Magnificent",
-  },
-  {
-    arabic: "اللَّهُمَّ اغْفِرْ لِي",
-    transliteration: "Allāhumma-ghfir lī",
-    translation: "O Allah, forgive me",
-  },
-  {
-    arabic: "حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ",
-    transliteration: "Ḥasbunallāhu wa ni'mal wakīl",
-    translation: "Allah suffices us — He is the best Guardian",
-  },
-  {
-    arabic: "رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً",
-    transliteration: "Rabbanā ātinā fid-dunyā ḥasanah wa fil-ākhirati ḥasanah",
-    translation: "Our Lord, grant us good in this world and in the Hereafter",
-  },
-  {
-    arabic: "بِسْمِ اللَّهِ تَوَكَّلْتُ عَلَى اللَّهِ",
-    transliteration: "Bismillāhi tawakkaltu 'alallāh",
-    translation: "In the name of Allah, I put my trust in Allah",
-  },
-  {
-    arabic: "اللَّهُمَّ إِنَّكَ عَفُوٌّ تُحِبُّ الْعَفْوَ فَاعْفُ عَنِّي",
-    transliteration: "Allāhumma innaka 'afuwwun tuḥibbul 'afwa fa'fu 'annī",
-    translation: "O Allah, You are Forgiving and love forgiveness, so forgive me",
   },
 ];
 

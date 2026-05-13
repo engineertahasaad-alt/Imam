@@ -71,11 +71,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="stats"
+        name="qibla"
         options={{
-          title: t("tab_stats"),
+          title: t("tab_qibla"),
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="chart-areaspline" size={size} color={color} />
+            <MaterialCommunityIcons name="compass" size={size} color={color} />
           ),
         }}
       />
@@ -96,6 +96,10 @@ export default function TabLayout() {
             <MaterialCommunityIcons name="tune-variant" size={size} color={color} />
           ),
         }}
+      />
+      <Tabs.Screen
+        name="stats"
+        options={{ href: null }}
       />
     </Tabs>
   );
