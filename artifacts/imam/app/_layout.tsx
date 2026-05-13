@@ -20,6 +20,7 @@ import { AzkarFloatingWidget } from "@/components/AzkarFloatingWidget";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/context/AppContext";
 import { AzkarProvider } from "@/context/AzkarContext";
+import { setupNotificationChannels } from "@/lib/notifications";
 
 const apiUrl = process.env.EXPO_PUBLIC_API_URL;
 if (apiUrl) {
@@ -35,6 +36,9 @@ LogBox.ignoreLogs([
 ]);
 
 SplashScreen.preventAutoHideAsync();
+
+// Set up Android notification channels as early as possible
+setupNotificationChannels().catch(() => {});
 
 const queryClient = new QueryClient();
 

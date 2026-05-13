@@ -8,6 +8,8 @@ import * as Haptics from "expo-haptics";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
+import { CHANNEL_AZKAR } from "./notifications";
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface DailyZikr {
@@ -653,16 +655,15 @@ export async function scheduleAzkarNotifications(
   const now             = Date.now();
 
   // ── 1. Reliable repeating notification (works after app kill / reboot) ──────
-  // Uses TIME_INTERVAL with repeats:true — fires every N seconds indefinitely.
-  // Content is generic (can't be dynamic per-fire without background task).
+  // TIME_INTERVAL + repeats:true fires every N seconds even after app kill.
+  // Uses CHANNEL_AZKAR (MAX importance) so it shows as a heads-up banner
+  // over any active app — the managed-Expo equivalent of a system overlay.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const repeatContent: any = { title: "🤲 ذكر", body: "اذكر الله — Remember Allah", data: { type: "azkar_repeat" } };
+  if (Platform.OS === "android") repeatContent.android = { channelId: CHANNEL_AZKAR };
   await Notifications.scheduleNotificationAsync({
     identifier: AZKAR_REPEAT_ID,
-    content: {
-      title: "🤲 ذكر",
-      body:  "اذكر الله — Remember Allah",
-      data:  { type: "azkar_repeat" },
-      sound: undefined,
-    },
+    content:    repeatContent,
     trigger: {
       type:    Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
       seconds: intervalSeconds,
@@ -675,14 +676,12 @@ export async function scheduleAzkarNotifications(
     const zikr   = await pickNextZikr();
     const fireAt = new Date(now + i * intervalMs);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const richContent: any = { title: "🤲 ذكر", body: zikr.arabic.slice(0, 120), data: { type: "azkar" } };
+    if (Platform.OS === "android") richContent.android = { channelId: CHANNEL_AZKAR };
     await Notifications.scheduleNotificationAsync({
       identifier: `${AZKAR_PREFIX}${i}`,
-      content: {
-        title: "🤲 ذكر",
-        body:  zikr.arabic.slice(0, 120),
-        data:  { type: "azkar" },
-        sound: undefined,
-      },
+      content:    richContent,
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
         date: fireAt,

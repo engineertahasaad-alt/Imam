@@ -3,6 +3,7 @@ import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
 import type { AdhanVoice } from "./storage";
+import { CHANNEL_ADHAN, setupNotificationChannels } from "./notifications";
 
 export { AdhanVoice };
 
@@ -108,8 +109,8 @@ const ADHAN_NOTIFICATION_PREFIX = "adhan_";
  * Notification sound references a bundled MP3 (configured in app.json).
  */
 export async function scheduleAdhanNotifications(
-  times: Record<string, Date>,
-  voice: AdhanVoice,
+  times:   Record<string, Date>,
+  voice:   AdhanVoice,
   enabled: boolean
 ): Promise<void> {
   if (Platform.OS === "web") return;
@@ -117,9 +118,13 @@ export async function scheduleAdhanNotifications(
   await cancelAdhanNotifications();
   if (!enabled) return;
 
+  // Ensure the channel exists for this voice (creates it if needed)
+  await setupNotificationChannels();
+
   const now        = new Date();
   const soundFile  = ADHAN_SOUND_FILES[voice];
   const voiceLabel = ADHAN_VOICE_LABELS[voice];
+  const channelId  = CHANNEL_ADHAN(voice);
 
   const arabicNames: Record<string, string> = {
     Fajr: "الفجر", Dhuhr: "الظهر", Asr: "العصر",
@@ -130,14 +135,18 @@ export async function scheduleAdhanNotifications(
     const time = times[name];
     if (!time || time <= now) continue;
 
+    const content = {
+      title: `🕌 أذان ${arabicNames[name] ?? name}`,
+      body:  `${name} prayer time — ${voiceLabel}`,
+      sound: soundFile,
+      data:  { prayerName: name, type: "adhan", voice },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+    if (Platform.OS === "android") content.android = { channelId };
+
     await Notifications.scheduleNotificationAsync({
       identifier: `${ADHAN_NOTIFICATION_PREFIX}${name}`,
-      content: {
-        title: `🕌 أذان ${arabicNames[name] ?? name}`,
-        body:  `${name} prayer time — ${voiceLabel}`,
-        sound: soundFile,
-        data:  { prayerName: name, type: "adhan", voice },
-      },
+      content,
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
         date: time,
