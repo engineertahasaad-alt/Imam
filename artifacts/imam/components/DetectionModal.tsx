@@ -103,11 +103,21 @@ export function DetectionModal({
   const [altitudeDrop, setAltitudeDrop]  = useState(0);
   const [holdDurationMs, setHoldDurationMs] = useState(3000);
 
-  const engineRef  = useRef<MotionEngine | null>(null);
-  const pulseAnim  = useRef(new Animated.Value(1)).current;
-  const confAnim   = useRef(new Animated.Value(0)).current;
-  const stabAnim   = useRef(new Animated.Value(1)).current;
-  const holdAnim   = useRef(new Animated.Value(0)).current;
+  const [wrongAlert, setWrongAlert] = useState<{
+    pos:         BodyPosition;
+    expected:    BodyPosition;
+    isSequence?: boolean;
+    message?:    string;
+  } | null>(null);
+
+  const engineRef       = useRef<MotionEngine | null>(null);
+  const pulseAnim       = useRef(new Animated.Value(1)).current;
+  const confAnim        = useRef(new Animated.Value(0)).current;
+  const stabAnim        = useRef(new Animated.Value(1)).current;
+  const holdAnim        = useRef(new Animated.Value(0)).current;
+  const alertSlideAnim  = useRef(new Animated.Value(140)).current;
+  const alertOpacity    = useRef(new Animated.Value(0)).current;
+  const wrongTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pre-load beep sound when modal mounts
   useEffect(() => {
@@ -116,7 +126,10 @@ export function DetectionModal({
 
   useEffect(() => {
     if (visible) startDetection();
-    return () => { engineRef.current?.stop(); };
+    return () => {
+      engineRef.current?.stop();
+      if (wrongTimerRef.current) clearTimeout(wrongTimerRef.current);
+    };
   }, [visible]);
 
   useEffect(() => {
@@ -197,8 +210,16 @@ export function DetectionModal({
         if (event.isCorrect === false) {
           setHoldProgress(0);
           setIsConfirmed(false);
-          // Beep + vibration for wrong posture
           vibrateWrong(vibrationEnabled, vibrationStrength);
+          if (event.position && event.expectedPosition) {
+            showWrongPostureAlert(event.position, event.expectedPosition);
+          }
+        }
+
+        if (event.isCorrect === true) {
+          // Dismiss wrong-posture overlay immediately when posture is corrected
+          if (wrongTimerRef.current) { clearTimeout(wrongTimerRef.current); wrongTimerRef.current = null; }
+          if (wrongAlert) dismissWrongAlert();
         }
 
         if (event.isCorrect === true && event.isConfirmed === true) {
@@ -231,6 +252,12 @@ export function DetectionModal({
         if (event.message) {
           setEvents((prev) => [`⚠️ ${event.message}`, ...prev.slice(0, 3)]);
         }
+        showWrongPostureAlert(
+          event.position ?? "UNKNOWN",
+          event.expectedPosition ?? "STANDING",
+          true,
+          event.message
+        );
       }
 
     }, sensitivity, expectedRakaat);
@@ -246,6 +273,26 @@ export function DetectionModal({
     engine.start();
     engineRef.current = engine;
     vibrateAction(vibrationEnabled);
+  }
+
+  function showWrongPostureAlert(pos: BodyPosition, expected: BodyPosition, isSequence = false, message?: string) {
+    if (wrongTimerRef.current) clearTimeout(wrongTimerRef.current);
+    setWrongAlert({ pos, expected, isSequence, message });
+    alertSlideAnim.setValue(140);
+    alertOpacity.setValue(0);
+    Animated.parallel([
+      Animated.spring(alertSlideAnim, { toValue: 0, useNativeDriver: true, tension: 90, friction: 10 }),
+      Animated.timing(alertOpacity,   { toValue: 1, duration: 180, useNativeDriver: true }),
+    ]).start();
+    wrongTimerRef.current = setTimeout(dismissWrongAlert, 4000);
+  }
+
+  function dismissWrongAlert() {
+    if (wrongTimerRef.current) { clearTimeout(wrongTimerRef.current); wrongTimerRef.current = null; }
+    Animated.parallel([
+      Animated.timing(alertSlideAnim, { toValue: 140, duration: 260, useNativeDriver: true }),
+      Animated.timing(alertOpacity,   { toValue: 0,   duration: 200, useNativeDriver: true }),
+    ]).start(() => setWrongAlert(null));
   }
 
   function handleComplete() {
@@ -317,6 +364,22 @@ export function DetectionModal({
     nextExpected === "UNKNOWN"  ? "Salam" :
     "—";
 
+  // ── Wrong-posture overlay text ──────────────────────────────────────────────
+  const POSITION_LABELS_AR: Record<BodyPosition, string> = {
+    STANDING: "القيام",
+    RUKU:     "الركوع",
+    SUJOOD:   "السجود",
+    SITTING:  "الجلوس",
+    UNKNOWN:  "غير معروف",
+  };
+  const POSITION_GUIDE_AR: Record<BodyPosition, string> = {
+    STANDING: "قف منتصباً، الهاتف في جيبك",
+    RUKU:     "انحنِ إلى الأمام من الخصر",
+    SUJOOD:   "اسجد — الجبهة على الأرض",
+    SITTING:  "اجلس بين السجدتين",
+    UNKNOWN:  "أبقِ الهاتف ثابتاً في جيبك",
+  };
+
   return (
     <Modal
       visible={visible}
@@ -324,13 +387,14 @@ export function DetectionModal({
       presentationStyle="pageSheet"
       onRequestClose={onCancel}
     >
+      <View style={{ flex: 1 }}>
       <ScrollView
         style={{ flex: 1, backgroundColor: colors.background }}
         contentContainerStyle={[
           styles.container,
           {
             paddingTop: insets.top + 16,
-            paddingBottom: insets.bottom + 16,
+            paddingBottom: insets.bottom + 100,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -655,6 +719,94 @@ export function DetectionModal({
           Short vibration = confirmed · Beep + long = adjust posture
         </Text>
       </ScrollView>
+
+      {/* ── Wrong-posture floating overlay ────────────────────────────── */}
+      {wrongAlert && (
+        <Animated.View
+          style={[
+            styles.wrongOverlay,
+            {
+              transform: [{ translateY: alertSlideAnim }],
+              opacity:   alertOpacity,
+              bottom:    insets.bottom + 16,
+            },
+          ]}
+        >
+          {/* Red accent bar */}
+          <View style={styles.wrongAccentBar} />
+
+          <View style={styles.wrongContent}>
+            {/* Header row */}
+            <View style={styles.wrongHeader}>
+              <View style={styles.wrongIconWrap}>
+                <Feather
+                  name={wrongAlert.isSequence ? "alert-octagon" : "alert-triangle"}
+                  size={20}
+                  color="#fff"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.wrongTitle}>
+                  {wrongAlert.isSequence ? "Sequence Error" : "Wrong Posture"}
+                </Text>
+                <Text style={styles.wrongSubtitle}>
+                  {wrongAlert.isSequence
+                    ? (wrongAlert.message ?? "Step skipped")
+                    : `Detected: ${POSITION_LABELS[wrongAlert.pos]}`}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={dismissWrongAlert}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={styles.wrongDismiss}
+              >
+                <Feather name="x" size={16} color="rgba(255,255,255,0.7)" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Correction row */}
+            <View style={styles.wrongCorrectionRow}>
+              {/* Current (wrong) */}
+              <View style={styles.wrongPosBlock}>
+                <View style={[styles.wrongPosChip, styles.wrongPosChipBad]}>
+                  <Feather name={POSITION_ICONS[wrongAlert.pos] as any} size={14} color="#f87171" />
+                  <Text style={[styles.wrongPosChipText, { color: "#f87171" }]}>
+                    {POSITION_LABELS[wrongAlert.pos].split(" — ")[0]}
+                  </Text>
+                </View>
+                <Text style={styles.wrongPosLabel}>Detected</Text>
+              </View>
+
+              <Feather name="arrow-right" size={18} color="rgba(255,255,255,0.4)" />
+
+              {/* Expected (correct) */}
+              <View style={styles.wrongPosBlock}>
+                <View style={[styles.wrongPosChip, styles.wrongPosChipGood]}>
+                  <Feather name={POSITION_ICONS[wrongAlert.expected] as any} size={14} color="#34d399" />
+                  <Text style={[styles.wrongPosChipText, { color: "#34d399" }]}>
+                    {POSITION_LABELS[wrongAlert.expected].split(" — ")[0]}
+                  </Text>
+                </View>
+                <Text style={styles.wrongPosLabel}>Required</Text>
+              </View>
+            </View>
+
+            {/* Guide text */}
+            <View style={styles.wrongGuideRow}>
+              <Feather name="info" size={12} color="rgba(255,255,255,0.5)" />
+              <Text style={styles.wrongGuideText}>
+                {POSITION_GUIDE[wrongAlert.expected]}
+              </Text>
+            </View>
+
+            {/* Arabic guide */}
+            <Text style={styles.wrongArabicGuide}>
+              {POSITION_GUIDE_AR[wrongAlert.expected]}
+            </Text>
+          </View>
+        </Animated.View>
+      )}
+      </View>
     </Modal>
   );
 }
@@ -738,4 +890,125 @@ const styles = StyleSheet.create({
   cancelBtnText:{ fontSize: 14, fontWeight: "500" },
 
   hint: { textAlign: "center", fontSize: 10, lineHeight: 15 },
+
+  /* ── Wrong-posture floating overlay ─────────────────────────────────────── */
+  wrongOverlay: {
+    position:     "absolute",
+    left:         16,
+    right:        16,
+    borderRadius: 18,
+    overflow:     "hidden",
+    flexDirection:"row",
+    elevation:    20,
+    shadowColor:  "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity:0.45,
+    shadowRadius: 20,
+    backgroundColor: "#1a0a0a",
+    borderWidth:  1,
+    borderColor:  "#f8717140",
+  },
+  wrongAccentBar: {
+    width:           4,
+    backgroundColor: "#f87171",
+  },
+  wrongContent: {
+    flex:    1,
+    padding: 14,
+    gap:     10,
+  },
+  wrongHeader: {
+    flexDirection:  "row",
+    alignItems:     "center",
+    gap:            10,
+  },
+  wrongIconWrap: {
+    width:           36,
+    height:          36,
+    borderRadius:    12,
+    backgroundColor: "#f8717130",
+    alignItems:      "center",
+    justifyContent:  "center",
+    flexShrink:      0,
+    borderWidth:     1,
+    borderColor:     "#f8717150",
+  },
+  wrongTitle: {
+    fontSize:   15,
+    fontWeight: "700",
+    color:      "#fff",
+  },
+  wrongSubtitle: {
+    fontSize:   11,
+    color:      "rgba(255,255,255,0.55)",
+    marginTop:  1,
+  },
+  wrongDismiss: {
+    width:           28,
+    height:          28,
+    borderRadius:    14,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems:      "center",
+    justifyContent:  "center",
+    flexShrink:      0,
+  },
+  wrongCorrectionRow: {
+    flexDirection:  "row",
+    alignItems:     "center",
+    gap:            10,
+  },
+  wrongPosBlock: {
+    flex:       1,
+    alignItems: "center",
+    gap:        4,
+  },
+  wrongPosChip: {
+    flexDirection:  "row",
+    alignItems:     "center",
+    gap:            6,
+    borderRadius:   10,
+    borderWidth:    1,
+    paddingHorizontal: 10,
+    paddingVertical:   6,
+    width:          "100%",
+    justifyContent: "center",
+  },
+  wrongPosChipBad: {
+    backgroundColor: "#f8717115",
+    borderColor:     "#f8717140",
+  },
+  wrongPosChipGood: {
+    backgroundColor: "#34d39915",
+    borderColor:     "#34d39940",
+  },
+  wrongPosChipText: {
+    fontSize:   12,
+    fontWeight: "700",
+  },
+  wrongPosLabel: {
+    fontSize: 9,
+    color:    "rgba(255,255,255,0.4)",
+    textAlign:"center",
+  },
+  wrongGuideRow: {
+    flexDirection:  "row",
+    alignItems:     "flex-start",
+    gap:            6,
+    backgroundColor:"rgba(255,255,255,0.05)",
+    borderRadius:   8,
+    padding:        8,
+  },
+  wrongGuideText: {
+    flex:      1,
+    fontSize:  11,
+    color:     "rgba(255,255,255,0.65)",
+    lineHeight:16,
+  },
+  wrongArabicGuide: {
+    fontSize:   11,
+    color:      "rgba(255,255,255,0.40)",
+    textAlign:  "right",
+    lineHeight: 18,
+    marginTop:  -4,
+  },
 });
