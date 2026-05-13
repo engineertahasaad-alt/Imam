@@ -1,0 +1,167 @@
+IMPORTANT — UI REFINEMENT ONLY.
+DO NOT rebuild the app.
+DO NOT remove or rewrite existing functionality.
+ONLY redesign and reorganize the current Home Screen UI.
+
+Use the attached image as inspiration ONLY.
+Do NOT copy it exactly.
+
+==================================================
+MAIN GOAL
+==================================================
+
+Redesign the Home Screen around TWO MAIN SECTIONS:
+
+1. الصلاة
+2. الأذكار
+
+The design should feel:
+- modern
+- clean
+- Islamic
+- minimal
+- visually rich
+- icon-focused
+- less text-heavy
+
+==================================================
+HOME SCREEN STRUCTURE
+==================================================
+
+Create a cleaner compact layout with less wasted vertical space.
+
+TOP HEADER:
+- “السلام عليكم، [username]”
+- Small subtitle:
+  - next prayer
+  - or azkar reminder
+- Compact notification/profile icons
+
+Reduce unnecessary empty spacing.
+
+==================================================
+SECTION 1 — PRAYER
+==================================================
+
+Large elegant prayer card.
+
+Style:
+- dark green gradient
+- mosque/prayer illustration
+- rounded corners
+- soft glow
+
+Inside use ICONS instead of text-heavy buttons.
+
+Features:
+- Start Prayer
+- Prayer Training
+- Prayer Times
+- Qibla
+
+Use:
+- compact icon grid
+- circular icons
+- minimal text
+
+DO NOT use large text buttons like:
+“Open Prayer Section”
+
+Use:
+- arrow icons
+- compact visual navigation
+
+==================================================
+SECTION 2 — AZKAR
+==================================================
+
+Large elegant azkar card.
+
+Style:
+- dark blue gradient
+- tasbeeh/moon/Quran illustrations
+- calm Islamic aesthetic
+
+Features:
+- Morning Azkar
+- Evening Azkar
+- Floating Azkar
+- Tasbeeh
+
+Use:
+- icon grid
+- compact cards
+- more visuals
+- less text
+
+==================================================
+UI DENSITY IMPROVEMENT
+==================================================
+
+Current issue:
+Too much unused vertical spacing.
+
+Required:
+- reduce padding/margins intelligently
+- fit more useful content on screen
+- keep readability and clean hierarchy
+
+DO NOT make the UI crowded.
+
+==================================================
+VISUAL STYLE
+==================================================
+
+Focus on:
+- premium Islamic design
+- elegant dark mode
+- subtle gradients
+- modern iconography
+- more illustrations
+- fewer text blocks
+
+==================================================
+BOTTOM NAVIGATION
+==================================================
+
+Keep:
+- Home
+- Prayer
+- Azkar
+- Settings
+
+Improve:
+- icon styling
+- active tab animation
+- spacing
+
+==================================================
+IMPORTANT
+==================================================
+
+DO NOT:
+- break prayer functionality
+- rewrite architecture
+- remove features
+- rebuild navigation from zero
+
+ONLY:
+- improve UI/UX
+- modernize layout
+- optimize spacing
+- reorganize content
+
+==================================================
+FINAL QA
+==================================================
+
+Before finishing:
+- verify all existing functions still work
+- verify responsive layout
+- verify Samsung compatibility
+- verify dark mode consistency
+- verify no overflow/clipping
+- verify performance remains smooth
+
+The app should feel like:
+A polished modern Islamic companion app.
