@@ -37,6 +37,10 @@ import {
   scheduleAllPrayerReminders,
 } from "@/lib/notifications";
 import {
+  registerRescheduleTask,
+  requestCriticalPermissions,
+} from "@/lib/adhanScheduler";
+import {
   playAdhanInApp,
   scheduleAdhanNotifications,
   stopAdhan,
@@ -144,6 +148,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     loadInitialData();
+    // Register background/boot task so notifications survive phone reboot
+    if (Platform.OS !== "web") {
+      registerRescheduleTask().catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
@@ -402,6 +410,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     if (Platform.OS !== "web") {
       await requestNotificationPermissions();
+      // Request battery optimization exemption + exact alarm permission
+      // so adhan fires reliably even with screen locked or app backgrounded
+      await requestCriticalPermissions();
     }
 
     const times = computeTimes(

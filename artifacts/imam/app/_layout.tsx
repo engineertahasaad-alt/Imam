@@ -21,6 +21,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/context/AppContext";
 import { AzkarProvider } from "@/context/AzkarContext";
 import { setupNotificationChannels } from "@/lib/notifications";
+import "@/lib/adhanScheduler"; // registers the boot/background task at module load time
 
 const apiUrl = process.env.EXPO_PUBLIC_API_URL;
 if (apiUrl) {

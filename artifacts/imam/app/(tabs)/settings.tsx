@@ -23,6 +23,7 @@ import {
   ADHAN_VOICE_LABELS,
   testAdhanPreview,
 } from "@/lib/adhanEngine";
+import { requestCriticalPermissions } from "@/lib/adhanScheduler";
 import {
   CALCULATION_METHODS,
   CalculationMethod,
@@ -405,6 +406,18 @@ export default function SettingsScreen() {
               <Feather name="play" size={16} color={colors.primary} />
               <Text style={[styles.calibrateBtnText, { color: colors.primary }]}>{t("s_test_adhan")}</Text>
             </TouchableOpacity>
+
+            {Platform.OS === "android" && (
+              <TouchableOpacity
+                style={[styles.calibrateBtn, { borderColor: "#f59e0b", marginTop: 0 }]}
+                onPress={requestCriticalPermissions}
+              >
+                <Feather name="shield" size={16} color="#f59e0b" />
+                <Text style={[styles.calibrateBtnText, { color: "#f59e0b" }]}>
+                  {isArabic ? "إصلاح موثوقية الأذان" : "Fix Adhan Reliability"}
+                </Text>
+              </TouchableOpacity>
+            )}
           </>
         )}
       </SettingsSection>
