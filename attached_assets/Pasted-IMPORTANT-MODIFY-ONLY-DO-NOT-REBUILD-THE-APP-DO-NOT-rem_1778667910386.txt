@@ -1,0 +1,138 @@
+IMPORTANT — MODIFY ONLY. DO NOT REBUILD THE APP.
+DO NOT remove or rewrite any existing feature.
+DO NOT change the current prayer guidance system.
+ONLY improve and extend the existing Azkar implementation safely.
+
+==================================================
+AZKAR CONTENT FIXES (CRITICAL)
+==================================================
+
+1. COMPLETE ALL AZKAR TEXTS
+--------------------------------------------------
+
+Some azkar are incomplete/truncated right now.
+Example: attached screenshot shows incomplete ayah/zikr text.
+
+Required:
+- Replace ALL incomplete azkar with FULL correct authentic text.
+- Verify every zikr carefully before inserting.
+- No shortened text.
+- No cut-off ayat.
+- No missing lines.
+
+==================================================
+AUTHENTIC SOURCE REQUIREMENT
+==================================================
+
+Use ONLY trusted authentic Islamic sources for:
+- zikr wording
+- repetition counts
+- morning/evening classifications
+
+Preferred trusted sources:
+- Hisnul Muslim (حصن المسلم)
+- Quran text from verified Mushaf source
+- Authentic Sunnah references
+
+For every zikr:
+- ensure wording is accurate
+- ensure tashkeel/Arabic formatting is correct if available
+- ensure repetition count is correct (1 / 3 / 7 / 100 etc.)
+
+DO NOT invent or paraphrase any zikr text.
+
+==================================================
+REMOVE TRANSLATION COMPLETELY
+==================================================
+
+Remove:
+- English translation
+- Transliteration/pronunciation
+- Mixed-language rendering
+
+In Azkar cards show ONLY:
+- Arabic zikr text
+- repetition counter
+- share button
+- floating button
+
+No translation anywhere in azkar cards.
+
+==================================================
+REPETITION COUNTER LOGIC FIX
+==================================================
+
+Current issue:
+After completion, user can continue pressing:
+1 → 2 → 3 → then counter restarts again.
+
+This behavior is NOT allowed.
+
+Required behavior:
+- Counter stops permanently at target count.
+- Example:
+  If zikr count = 3:
+  user presses:
+  1 → 2 → 3
+  then:
+  - disable further increment
+  - do NOT restart from zero
+  - do NOT exceed target count
+
+After completion:
+- show completed state visually
+- optional:
+  - checkmark
+  - soft glow
+  - completed badge
+  - subtle vibration
+
+==================================================
+RESET BEHAVIOR
+==================================================
+
+Add explicit reset behavior:
+- User can manually reset the zikr counter using:
+  - reset button OR long press OR refresh icon
+
+But:
+- reset must NEVER happen automatically.
+
+==================================================
+SAVE STATE
+==================================================
+
+Optional but recommended:
+- persist zikr progress locally
+- if user leaves screen and returns, keep progress
+- reset only when user explicitly resets
+
+==================================================
+UI REQUIREMENTS
+==================================================
+
+Keep the elegant Islamic card design.
+Use attached screenshots only as inspiration.
+
+Improve:
+- readability
+- spacing
+- Arabic typography
+- dark mode consistency
+
+==================================================
+FINAL VERIFICATION
+==================================================
+
+Before finishing:
+- Verify all azkar are complete
+- Verify all repetition counts are authentic
+- Verify no translation appears
+- Verify counters never restart automatically
+- Verify no existing prayer feature broke
+- Verify floating azkar still works correctly
+- Verify Android performance remains smooth
+
+DO NOT leave placeholders.
+DO NOT partially complete azkar.
+DO NOT break existing functionality.

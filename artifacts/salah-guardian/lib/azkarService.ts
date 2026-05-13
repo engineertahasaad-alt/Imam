@@ -27,6 +27,52 @@ export interface AzkarSettings {
   position: "left" | "right";
   vibration: boolean;
   backgroundNotifications: boolean;
+  morningReminderEnabled: boolean;
+  morningReminderHour: number;
+  morningReminderMinute: number;
+  eveningReminderEnabled: boolean;
+  eveningReminderHour: number;
+  eveningReminderMinute: number;
+}
+
+// ── Daily Completion Record ────────────────────────────────────────────────────
+
+export interface DailyCompletionRecord {
+  date: string;
+  morning: boolean;
+  evening: boolean;
+}
+
+const COMPLETION_KEY = "@azkar/completion_v1";
+
+function todayString(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export async function loadDailyCompletion(): Promise<DailyCompletionRecord> {
+  const today = todayString();
+  try {
+    const raw = await AsyncStorage.getItem(COMPLETION_KEY);
+    if (!raw) return { date: today, morning: false, evening: false };
+    const parsed: DailyCompletionRecord = JSON.parse(raw);
+    if (parsed.date !== today) return { date: today, morning: false, evening: false };
+    return parsed;
+  } catch {
+    return { date: today, morning: false, evening: false };
+  }
+}
+
+export async function markCategoryComplete(
+  category: "morning" | "evening"
+): Promise<DailyCompletionRecord> {
+  const current = await loadDailyCompletion();
+  const updated: DailyCompletionRecord = {
+    ...current,
+    [category]: true,
+  };
+  await AsyncStorage.setItem(COMPLETION_KEY, JSON.stringify(updated));
+  return updated;
 }
 
 export interface Zikr {
@@ -284,6 +330,12 @@ export const DEFAULT_AZKAR_SETTINGS: AzkarSettings = {
   position: "right",
   vibration: false,
   backgroundNotifications: true,
+  morningReminderEnabled: false,
+  morningReminderHour: 6,
+  morningReminderMinute: 30,
+  eveningReminderEnabled: false,
+  eveningReminderHour: 17,
+  eveningReminderMinute: 30,
 };
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
@@ -315,6 +367,18 @@ function sanitizeAzkarSettings(raw: Partial<AzkarSettings>): AzkarSettings {
     opacity: typeof raw.opacity === "number"
       ? Math.max(0.1, Math.min(1, raw.opacity))
       : DEFAULT_AZKAR_SETTINGS.opacity,
+    morningReminderHour: typeof raw.morningReminderHour === "number"
+      ? Math.max(0, Math.min(23, raw.morningReminderHour))
+      : DEFAULT_AZKAR_SETTINGS.morningReminderHour,
+    morningReminderMinute: typeof raw.morningReminderMinute === "number"
+      ? Math.max(0, Math.min(59, raw.morningReminderMinute))
+      : DEFAULT_AZKAR_SETTINGS.morningReminderMinute,
+    eveningReminderHour: typeof raw.eveningReminderHour === "number"
+      ? Math.max(0, Math.min(23, raw.eveningReminderHour))
+      : DEFAULT_AZKAR_SETTINGS.eveningReminderHour,
+    eveningReminderMinute: typeof raw.eveningReminderMinute === "number"
+      ? Math.max(0, Math.min(59, raw.eveningReminderMinute))
+      : DEFAULT_AZKAR_SETTINGS.eveningReminderMinute,
   };
 }
 
@@ -455,5 +519,59 @@ export async function cancelAzkarNotifications(): Promise<void> {
         await Notifications.cancelScheduledNotificationAsync(n.identifier);
       }
     }
+  } catch { /* ignore */ }
+}
+
+// ── Daily Reminder Notifications ──────────────────────────────────────────────
+
+const REMINDER_MORNING_ID = "azkar_reminder_morning";
+const REMINDER_EVENING_ID = "azkar_reminder_evening";
+
+export async function scheduleDailyReminders(
+  settings: AzkarSettings
+): Promise<void> {
+  if (Platform.OS === "web") return;
+  await cancelDailyReminders();
+
+  if (settings.morningReminderEnabled) {
+    await Notifications.scheduleNotificationAsync({
+      identifier: REMINDER_MORNING_ID,
+      content: {
+        title: "ورد الصباح 🌤️",
+        body: "حان وقت أذكار الصباح",
+        data: { route: "/azkar-morning", type: "daily_reminder" },
+        sound: undefined,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour: settings.morningReminderHour,
+        minute: settings.morningReminderMinute,
+      },
+    }).catch(() => {});
+  }
+
+  if (settings.eveningReminderEnabled) {
+    await Notifications.scheduleNotificationAsync({
+      identifier: REMINDER_EVENING_ID,
+      content: {
+        title: "ورد المساء 🌙",
+        body: "حان وقت أذكار المساء",
+        data: { route: "/azkar-evening", type: "daily_reminder" },
+        sound: undefined,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour: settings.eveningReminderHour,
+        minute: settings.eveningReminderMinute,
+      },
+    }).catch(() => {});
+  }
+}
+
+export async function cancelDailyReminders(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    await Notifications.cancelScheduledNotificationAsync(REMINDER_MORNING_ID).catch(() => {});
+    await Notifications.cancelScheduledNotificationAsync(REMINDER_EVENING_ID).catch(() => {});
   } catch { /* ignore */ }
 }

@@ -14,14 +14,19 @@ import React, {
 
 import {
   AzkarSettings,
+  DailyCompletionRecord,
   DEFAULT_AZKAR_SETTINGS,
   Zikr,
   azkarSoftVibrate,
   cancelAzkarNotifications,
+  cancelDailyReminders,
   loadAzkarSettings,
+  loadDailyCompletion,
+  markCategoryComplete,
   pickNextZikr,
   saveAzkarSettings,
   scheduleAzkarNotifications,
+  scheduleDailyReminders,
 } from "@/lib/azkarService";
 
 interface AzkarContextType {
@@ -32,14 +37,24 @@ interface AzkarContextType {
   dismissWidget: () => void;
   showNow: () => Promise<void>;
   showZikr: (zikr: Zikr) => void;
+  dailyCompletion: DailyCompletionRecord;
+  markComplete: (category: "morning" | "evening") => Promise<void>;
+  refreshCompletion: () => Promise<void>;
 }
 
 const AzkarContext = createContext<AzkarContextType | null>(null);
 
+const EMPTY_COMPLETION: DailyCompletionRecord = {
+  date: "",
+  morning: false,
+  evening: false,
+};
+
 export function AzkarProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings]       = useState<AzkarSettings>(DEFAULT_AZKAR_SETTINGS);
-  const [currentZikr, setCurrentZikr] = useState<Zikr | null>(null);
-  const [widgetVisible, setVisible]   = useState(false);
+  const [settings, setSettings]             = useState<AzkarSettings>(DEFAULT_AZKAR_SETTINGS);
+  const [currentZikr, setCurrentZikr]       = useState<Zikr | null>(null);
+  const [widgetVisible, setVisible]         = useState(false);
+  const [dailyCompletion, setCompletion]    = useState<DailyCompletionRecord>(EMPTY_COMPLETION);
 
   const settingsRef   = useRef(settings);
   const timerRef      = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -48,13 +63,14 @@ export function AzkarProvider({ children }: { children: React.ReactNode }) {
 
   settingsRef.current = settings;
 
-  // Load settings on mount, then start the timer
   useEffect(() => {
     loadAzkarSettings().then((s) => {
       setSettings(s);
       if (s.enabled) startTimer(s.frequencyMinutes);
       scheduleAzkarNotifications(s).catch(() => {});
+      scheduleDailyReminders(s).catch(() => {});
     });
+    loadDailyCompletion().then(setCompletion);
     return () => clearTimers();
   }, []);
 
@@ -69,7 +85,6 @@ export function AzkarProvider({ children }: { children: React.ReactNode }) {
     timerRef.current = setInterval(() => {
       const s = settingsRef.current;
       if (!s.enabled) return;
-      // Prevent spam: require at least 80 % of the interval between shows
       const now = Date.now();
       if (now - lastShownRef.current < ms * 0.8) return;
       showNow();
@@ -87,7 +102,6 @@ export function AzkarProvider({ children }: { children: React.ReactNode }) {
 
     if (s.vibration) azkarSoftVibrate();
 
-    // Auto-hide after displaySeconds
     if (autoHideRef.current) clearTimeout(autoHideRef.current);
     autoHideRef.current = setTimeout(() => {
       setVisible(false);
@@ -121,16 +135,45 @@ export function AzkarProvider({ children }: { children: React.ReactNode }) {
     }
 
     scheduleAzkarNotifications(updated).catch(() => {});
+    scheduleDailyReminders(updated).catch(() => {});
 
     if (!updated.enabled) {
       cancelAzkarNotifications().catch(() => {});
       setVisible(false);
     }
+
+    if (
+      partial.morningReminderEnabled === false &&
+      partial.eveningReminderEnabled === false
+    ) {
+      cancelDailyReminders().catch(() => {});
+    }
+  }, []);
+
+  const markComplete = useCallback(async (category: "morning" | "evening") => {
+    const updated = await markCategoryComplete(category);
+    setCompletion(updated);
+  }, []);
+
+  const refreshCompletion = useCallback(async () => {
+    const rec = await loadDailyCompletion();
+    setCompletion(rec);
   }, []);
 
   return (
     <AzkarContext.Provider
-      value={{ settings, updateSettings, currentZikr, widgetVisible, dismissWidget, showNow, showZikr }}
+      value={{
+        settings,
+        updateSettings,
+        currentZikr,
+        widgetVisible,
+        dismissWidget,
+        showNow,
+        showZikr,
+        dailyCompletion,
+        markComplete,
+        refreshCompletion,
+      }}
     >
       {children}
     </AzkarContext.Provider>

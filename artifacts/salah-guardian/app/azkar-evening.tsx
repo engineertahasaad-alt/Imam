@@ -1,6 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -17,27 +17,36 @@ import { useColors } from "@/hooks/useColors";
 import { useTranslation } from "@/hooks/useTranslation";
 import { EVENING_AZKAR, DailyZikr, dailyZikrToZikr } from "@/lib/azkarService";
 
+const EVENING_ACCENT = "#8b5cf6";
+
 function ZikrCard({
   zikr,
-  index,
   isArabic,
   colors,
-  t,
   onFloat,
+  onDone,
 }: {
   zikr: DailyZikr;
-  index: number;
   isArabic: boolean;
   colors: ReturnType<typeof useColors>;
-  t: (k: string) => string;
   onFloat: (zikr: DailyZikr) => void;
+  onDone: (id: string) => void;
 }) {
   const [count, setCount] = useState(zikr.repeatCount);
   const done = count === 0;
+  const reportedRef = useRef(false);
+
+  useEffect(() => {
+    if (done && !reportedRef.current) {
+      reportedRef.current = true;
+      onDone(zikr.id);
+    }
+  }, [done]);
 
   function handleTap() {
     if (done) {
       setCount(zikr.repeatCount);
+      reportedRef.current = false;
     } else {
       setCount((c) => c - 1);
     }
@@ -47,13 +56,10 @@ function ZikrCard({
     const text = isArabic
       ? zikr.arabicText
       : `${zikr.arabicText}\n\n${zikr.englishText}`;
-    try {
-      await Share.share({ message: text });
-    } catch {}
+    try { await Share.share({ message: text }); } catch {}
   }
 
   const progress = done ? 1 : (zikr.repeatCount - count) / zikr.repeatCount;
-  const progressColor = done ? colors.success : "#8b5cf6";
 
   return (
     <TouchableOpacity
@@ -62,37 +68,31 @@ function ZikrCard({
       style={[
         styles.card,
         {
-          backgroundColor: done ? "#8b5cf6" + "12" : colors.card,
-          borderColor: done ? "#8b5cf6" + "50" : colors.border,
+          backgroundColor: done ? EVENING_ACCENT + "12" : colors.card,
+          borderColor: done ? EVENING_ACCENT + "50" : colors.border,
         },
       ]}
     >
-      {/* Arabic text */}
       <Text
-        style={[
-          styles.arabicText,
-          { color: done ? "#8b5cf6" : colors.foreground },
-        ]}
+        style={[styles.arabicText, { color: done ? EVENING_ACCENT : colors.foreground }]}
         textBreakStrategy="highQuality"
       >
         {zikr.arabicText}
       </Text>
 
-      {/* English translation — only shown when English */}
       {!isArabic && (
         <Text style={[styles.englishText, { color: colors.mutedForeground }]}>
           {zikr.englishText}
         </Text>
       )}
 
-      {/* Progress bar */}
       {zikr.repeatCount > 1 && (
         <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
           <View
             style={[
               styles.progressFill,
               {
-                backgroundColor: progressColor,
+                backgroundColor: done ? colors.success : EVENING_ACCENT,
                 width: `${progress * 100}%` as any,
               },
             ]}
@@ -100,9 +100,7 @@ function ZikrCard({
         </View>
       )}
 
-      {/* Bottom row */}
       <View style={styles.cardFooter}>
-        {/* Counter badge */}
         <View
           style={[
             styles.counterBadge,
@@ -119,30 +117,23 @@ function ZikrCard({
               {isArabic ? "التكرار" : "Repeat"}
             </Text>
           )}
-          <Text
-            style={[
-              styles.counterValue,
-              { color: done ? colors.success : colors.foreground },
-            ]}
-          >
+          <Text style={[styles.counterValue, { color: done ? colors.success : colors.foreground }]}>
             {done ? (isArabic ? "تم ✓" : "Done ✓") : `${count} / ${zikr.repeatCount}`}
           </Text>
         </View>
 
         <View style={styles.cardActions}>
-          {/* Float button */}
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: "#8b5cf620" }]}
+            style={[styles.actionBtn, { backgroundColor: EVENING_ACCENT + "20" }]}
             onPress={() => onFloat(zikr)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <MaterialCommunityIcons name="picture-in-picture-bottom-right" size={15} color="#8b5cf6" />
-            <Text style={[styles.actionLabel, { color: "#8b5cf6" }]}>
+            <MaterialCommunityIcons name="picture-in-picture-bottom-right" size={15} color={EVENING_ACCENT} />
+            <Text style={[styles.actionLabel, { color: EVENING_ACCENT }]}>
               {isArabic ? "تعويم" : "Float"}
             </Text>
           </TouchableOpacity>
 
-          {/* Share button */}
           <TouchableOpacity
             style={[styles.actionBtn, { backgroundColor: colors.secondary }]}
             onPress={handleShare}
@@ -162,16 +153,26 @@ function ZikrCard({
 export default function AzkarEveningScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { t, isArabic } = useTranslation();
-  const { showZikr } = useAzkar();
+  const { isArabic } = useTranslation();
+  const { showZikr, markComplete, dailyCompletion } = useAzkar();
+
+  const doneIdsRef = useRef<Set<string>>(new Set());
+  const [allDone, setAllDone] = useState(dailyCompletion.evening);
 
   function handleFloat(zikr: DailyZikr) {
     showZikr(dailyZikrToZikr(zikr));
   }
 
+  function handleCardDone(id: string) {
+    doneIdsRef.current.add(id);
+    if (doneIdsRef.current.size >= EVENING_AZKAR.length) {
+      setAllDone(true);
+      markComplete("evening");
+    }
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Header */}
       <View
         style={[
           styles.header,
@@ -186,36 +187,46 @@ export default function AzkarEveningScreen() {
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <MaterialCommunityIcons name="weather-night" size={22} color="#8b5cf6" />
+          <MaterialCommunityIcons name="weather-night" size={22} color={EVENING_ACCENT} />
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-            {t("evening_azkar")}
+            {isArabic ? "أذكار المساء" : "Evening Azkar"}
           </Text>
         </View>
-        <View style={{ width: 36 }} />
+        {allDone ? (
+          <MaterialCommunityIcons name="check-circle" size={24} color={colors.success} style={{ marginRight: 4 }} />
+        ) : (
+          <View style={{ width: 36 }} />
+        )}
       </View>
 
       <ScrollView
         contentContainerStyle={[
           styles.list,
-          {
-            paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 32),
-          },
+          { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 32) },
         ]}
         showsVerticalScrollIndicator={false}
       >
+        {allDone && (
+          <View style={[styles.completionBanner, { backgroundColor: colors.success + "18", borderColor: colors.success + "40" }]}>
+            <MaterialCommunityIcons name="check-decagram" size={22} color={colors.success} />
+            <Text style={[styles.completionText, { color: colors.success }]}>
+              {isArabic ? "أحسنت! أتممت أذكار المساء اليوم 🌙" : "Well done! Evening Azkar complete for today 🌙"}
+            </Text>
+          </View>
+        )}
+
         <Text style={[styles.hint, { color: colors.mutedForeground }]}>
           {isArabic ? "اضغط على البطاقة للعد" : "Tap a card to count"}
         </Text>
 
-        {EVENING_AZKAR.map((zikr, i) => (
+        {EVENING_AZKAR.map((zikr) => (
           <ZikrCard
             key={zikr.id}
             zikr={zikr}
-            index={i}
             isArabic={isArabic}
             colors={colors}
-            t={t}
             onFloat={handleFloat}
+            onDone={handleCardDone}
           />
         ))}
       </ScrollView>
@@ -239,6 +250,16 @@ const styles = StyleSheet.create({
   list: { padding: 16, gap: 14 },
   hint: { fontSize: 12, textAlign: "center", marginBottom: 4 },
 
+  completionBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+  },
+  completionText: { fontSize: 13, fontWeight: "600", flex: 1 },
+
   card: {
     borderRadius: 18,
     borderWidth: 1,
@@ -250,7 +271,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 6,
   },
-
   arabicText: {
     fontSize: 22,
     fontWeight: "700",
@@ -258,12 +278,7 @@ const styles = StyleSheet.create({
     lineHeight: 38,
     writingDirection: "rtl",
   },
-  englishText: {
-    fontSize: 13,
-    lineHeight: 20,
-    textAlign: "left",
-  },
-
+  englishText: { fontSize: 13, lineHeight: 20, textAlign: "left" },
   progressTrack: { height: 3, borderRadius: 2, overflow: "hidden" },
   progressFill:  { height: "100%", borderRadius: 2 },
 
@@ -273,7 +288,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 10,
   },
-
   counterBadge: {
     flexDirection: "row",
     alignItems: "center",

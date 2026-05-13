@@ -1,0 +1,142 @@
+IMPORTANT — MODIFY ONLY. DO NOT REBUILD THE APP.
+DO NOT remove or rewrite any existing feature.
+DO NOT break the prayer guidance system.
+ONLY extend the current implementation safely.
+
+==================================================
+NEW FEATURE — DAILY AZKAR REMINDERS
+==================================================
+
+Add smart daily reminders for Azkar:
+
+1. Morning Azkar Reminder
+2. Evening Azkar Reminder
+
+The reminder must trigger using:
+- floating message overlay
+AND
+- Android notification
+
+Reuse the EXISTING floating azkar system.
+DO NOT build a separate floating engine.
+
+==================================================
+REMINDER TIMING
+==================================================
+
+Default timing:
+- Morning reminder:
+  after Fajr / early morning
+
+- Evening reminder:
+  before Maghrib / sunset period
+
+Add simple user settings:
+- enable/disable reminders
+- adjust reminder time manually if desired
+
+==================================================
+FLOATING REMINDER BEHAVIOR
+==================================================
+
+When reminder triggers:
+- show small elegant floating message
+- NOT full-screen
+- lightweight overlay
+- smooth animation
+
+Example messages:
+- "ورد الصباح 🌤️"
+- "ورد المساء 🌙"
+
+Overlay should:
+- open corresponding azkar screen on click
+- be dismissible
+- respect Android overlay permissions
+- avoid annoying repeated popups
+
+==================================================
+NOTIFICATION REQUIREMENTS
+==================================================
+
+Create proper Android notifications:
+- high readability
+- Islamic minimal style
+- morning/evening icon
+- tapping notification opens correct azkar page
+
+Support:
+- Android background execution
+- app closed state
+- scheduled local notifications
+
+==================================================
+PERFORMANCE REQUIREMENTS
+==================================================
+
+Keep:
+- low battery usage
+- optimized background behavior
+- stable scheduling
+- no memory leaks
+
+DO NOT use heavy background services unnecessarily.
+
+==================================================
+FINAL QA / RELEASE READINESS
+==================================================
+
+After implementing ALL requested modifications:
+
+Perform full verification and ensure:
+- prayer section works perfectly
+- floating azkar works
+- morning/evening azkar work
+- counters stop correctly after completion
+- notifications work
+- floating reminders work
+- no incomplete azkar exist
+- no English translation exists
+- dark mode works
+- Android navigation safe area works
+- Samsung devices render correctly
+- no crashes
+- no TypeScript/build errors
+- no broken imports
+- no unused dependencies causing build issues
+
+==================================================
+APK / PRODUCTION READINESS
+==================================================
+
+IMPORTANT:
+Prepare the project for APK/AAB production build.
+
+Ensure:
+- app is production-ready
+- release build succeeds
+- all dependencies are compatible
+- no development-only blockers remain
+- Android permissions are configured correctly
+- overlay permissions handled properly
+- notification permissions handled properly
+- no console spam/errors
+
+DO NOT leave TODOs or placeholder code.
+
+The app should be fully ready for:
+- APK generation
+- AAB generation
+- Google Play Store publishing
+
+==================================================
+GOOGLE PLAY COMPATIBILITY
+==================================================
+
+Ensure compatibility with:
+- modern Android SDK requirements
+- foreground/background execution policies
+- notification permission policies
+- overlay permission handling
+
+Do not implement anything that violates Google Play policies.
