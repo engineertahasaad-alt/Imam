@@ -873,6 +873,15 @@ export default function SettingsScreen() {
           <Text style={[styles.aboutLabel, { color: colors.mutedForeground }]}>{t("s_sensors")}</Text>
           <Text style={[styles.aboutValue, { color: colors.foreground }]}>{t("s_accel_gyro")}</Text>
         </View>
+        <TouchableOpacity
+          style={[styles.aboutItem, { borderColor: colors.border }]}
+          onPress={() => router.push("/debug-notifications")}
+        >
+          <Text style={[styles.aboutLabel, { color: colors.mutedForeground }]}>
+            {isArabic ? "فحص الإشعارات المجدولة" : "Scheduled Notifications Debug"}
+          </Text>
+          <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+        </TouchableOpacity>
       </SettingsSection>
 
       {/* ── Reset ─────────────────────────────────────────────────────────── */}
