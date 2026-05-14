@@ -135,14 +135,20 @@ export async function scheduleAdhanNotifications(
     const time = times[name];
     if (!time || time <= now) continue;
 
-    const content = {
+    // BUG FIX: Do NOT set `sound` in notification content on Android.
+    // Android always uses the channel sound; a mismatched content sound
+    // can suppress audio entirely. Set sound only on iOS.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const content: any = {
       title: `🕌 أذان ${arabicNames[name] ?? name}`,
       body:  `${name} prayer time — ${voiceLabel}`,
-      sound: soundFile,
       data:  { prayerName: name, type: "adhan", voice },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any;
-    if (Platform.OS === "android") content.android = { channelId };
+    };
+    if (Platform.OS === "android") {
+      content.android = { channelId };
+    } else {
+      content.sound = soundFile; // iOS: reference the bundled file directly
+    }
 
     await Notifications.scheduleNotificationAsync({
       identifier: `${ADHAN_NOTIFICATION_PREFIX}${name}`,

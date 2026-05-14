@@ -244,8 +244,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         Fajr: times.fajr, Dhuhr: times.dhuhr, Asr: times.asr,
         Maghrib: times.maghrib, Isha: times.isha,
       };
-      scheduleAllPrayerReminders(prayerMap, reminderOffset).catch(() => {});
-      scheduleAdhanNotifications(prayerMap, adhanVoice as any, adhanEnabled).catch(() => {});
+      // BUG FIX: Run sequentially inside a single async IIFE so that
+      // cancelAllPrayerReminders() (inside scheduleAllPrayerReminders) cannot
+      // race against and wipe freshly-scheduled adhan notifications.
+      (async () => {
+        await scheduleAllPrayerReminders(prayerMap, reminderOffset);
+        await scheduleAdhanNotifications(prayerMap, adhanVoice as any, adhanEnabled);
+      })().catch(() => {});
     }
 
     return times;
