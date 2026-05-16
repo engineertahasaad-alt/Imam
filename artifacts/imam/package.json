@@ -8,13 +8,13 @@
     "build": "node scripts/build.js",
     "serve": "node server/serve.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "apk": "eas build --profile preview --platform android",
-    "apk:dev": "eas build --profile development --platform android",
-    "aab": "eas build --profile production --platform android",
-    "submit": "eas submit --profile production --platform android",
-    "update": "eas update --channel production --message",
-    "update:preview": "eas update --channel preview --message",
-    "update:dev": "eas update --channel development --message"
+    "apk": "EXPO_TOKEN=$EXPO_TOKEN eas build --profile preview --platform android --non-interactive",
+    "apk:dev": "EXPO_TOKEN=$EXPO_TOKEN eas build --profile development --platform android --non-interactive",
+    "aab": "EXPO_TOKEN=$EXPO_TOKEN eas build --profile production --platform android --non-interactive",
+    "submit": "EXPO_TOKEN=$EXPO_TOKEN eas submit --profile production --platform android --non-interactive",
+    "update": "EXPO_TOKEN=$EXPO_TOKEN eas update --channel production --non-interactive --message",
+    "update:preview": "EXPO_TOKEN=$EXPO_TOKEN eas update --channel preview --non-interactive --message",
+    "update:dev": "EXPO_TOKEN=$EXPO_TOKEN eas update --channel development --non-interactive --message"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
