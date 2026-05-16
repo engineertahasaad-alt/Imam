@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
   loadingText: { fontSize: 15 },
 
-  root: { flex: 1, gap: 12, justifyContent: "center" },
+  root: { flex: 1, gap: 14, justifyContent: "center" },
 
   /* Header */
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
@@ -661,9 +661,9 @@ const styles = StyleSheet.create({
 
   /* Cards */
   card: {
-    borderRadius: 20, overflow: "hidden", padding: 14, gap: 10,
-    elevation: 6, shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.22, shadowRadius: 10,
+    borderRadius: 24, overflow: "hidden", padding: 16, gap: 12,
+    elevation: 8, shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 14,
   },
   glowRing: { position: "absolute", borderWidth: 1 },
 
@@ -675,14 +675,14 @@ const styles = StyleSheet.create({
   /* Inline countdown */
   countdownInline: { alignItems: "flex-end" },
   countdownArabic: { fontSize: 13, color: "rgba(255,255,255,0.55)", fontWeight: "300" },
-  countdownText: { fontSize: 26, fontWeight: "200", color: "#fff", letterSpacing: 1.5, fontVariant: ["tabular-nums"] },
+  countdownText: { fontSize: 30, fontWeight: "100", color: "#fff", letterSpacing: 2, fontVariant: ["tabular-nums"] },
 
   /* Schedule strip */
-  scheduleStrip: { flexDirection: "row", justifyContent: "space-between", borderRadius: 12, paddingVertical: 8, paddingHorizontal: 6 },
-  scheduleCell: { flex: 1, alignItems: "center", gap: 2 },
-  scheduleDot: { width: 12, height: 12, borderRadius: 6, alignItems: "center", justifyContent: "center", marginBottom: 1 },
-  scheduleArabic: { fontSize: 10, fontWeight: "600", textAlign: "center" },
-  scheduleTime: { fontSize: 9, fontVariant: ["tabular-nums"], textAlign: "center" },
+  scheduleStrip: { flexDirection: "row", justifyContent: "space-between", borderRadius: 14, paddingVertical: 10, paddingHorizontal: 8 },
+  scheduleCell: { flex: 1, alignItems: "center", gap: 3 },
+  scheduleDot: { width: 14, height: 14, borderRadius: 7, alignItems: "center", justifyContent: "center", marginBottom: 1 },
+  scheduleArabic: { fontSize: 11, fontWeight: "700", textAlign: "center" },
+  scheduleTime: { fontSize: 9, fontVariant: ["tabular-nums"], textAlign: "center", fontWeight: "500" },
   scheduleActiveLine: { position: "absolute", bottom: -3, left: "20%", right: "20%", height: 2, borderRadius: 1, backgroundColor: "#34d399" },
 
   /* Azkar card */
@@ -693,22 +693,22 @@ const styles = StyleSheet.create({
   /* Icon grid */
   iconGrid: { flexDirection: "row", justifyContent: "space-between" },
   iconAction: { flex: 1, alignItems: "center", gap: 5 },
-  iconCircle: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center" },
-  iconLabel: { fontSize: 10, fontWeight: "600", textAlign: "center" },
+  iconCircle: { width: 50, height: 50, borderRadius: 25, alignItems: "center", justifyContent: "center" },
+  iconLabel: { fontSize: 10, fontWeight: "700", textAlign: "center" },
 
   /* Stats row */
-  statsRow: { flexDirection: "row", borderRadius: 14, borderWidth: 1, paddingVertical: 10, paddingHorizontal: 8, alignItems: "center" },
-  statCell: { flex: 1, alignItems: "center", gap: 2 },
-  statIcon: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", marginBottom: 1 },
-  statNumber: { fontSize: 15, fontWeight: "700", letterSpacing: -0.5 },
-  statLabel: { fontSize: 9, textAlign: "center" },
+  statsRow: { flexDirection: "row", borderRadius: 16, borderWidth: 1, paddingVertical: 14, paddingHorizontal: 10, alignItems: "center" },
+  statCell: { flex: 1, alignItems: "center", gap: 3 },
+  statIcon: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", marginBottom: 2 },
+  statNumber: { fontSize: 17, fontWeight: "700", letterSpacing: -0.5 },
+  statLabel: { fontSize: 10, textAlign: "center" },
   statDivider: { width: StyleSheet.hairlineWidth, height: 34, marginHorizontal: 4 },
 
   hint: { textAlign: "center", fontSize: 11, lineHeight: 16 },
 
   /* Shared modal / bottom-sheet */
   modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" },
-  modalSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, gap: 14 },
+  modalSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 22, gap: 16 },
   modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 4 },
   modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   modalTitle: { fontSize: 17, fontWeight: "700" },

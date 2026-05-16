@@ -1,8 +1,10 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
+  AppState,
+  AppStateStatus,
   I18nManager,
   Platform,
   ScrollView,
@@ -24,6 +26,15 @@ import {
   testAdhanPreview,
 } from "@/lib/adhanEngine";
 import { requestCriticalPermissions } from "@/lib/adhanScheduler";
+import {
+  checkPermissions,
+  openBatteryOptimizationSettings,
+  openExactAlarmSettings,
+  openLocationSettings,
+  openNotificationSettings,
+  openOverlaySettings,
+  PermStatus,
+} from "@/lib/permissions";
 import {
   CALCULATION_METHODS,
   CalculationMethod,
@@ -95,6 +106,30 @@ export default function SettingsScreen() {
   }
   async function changePrayerTimeOffset(offset: number) {
     await updateSettings({ prayerTimeOffsetMinutes: offset });
+  }
+
+  // ── Permission states ──────────────────────────────────────────────────────
+  const [notifPerm, setNotifPerm] = useState<PermStatus>("unknown");
+  const [locPerm,   setLocPerm]   = useState<PermStatus>("unknown");
+
+  const refreshPerms = useCallback(async () => {
+    const { notifications, location } = await checkPermissions();
+    setNotifPerm(notifications);
+    setLocPerm(location);
+  }, []);
+
+  useEffect(() => { refreshPerms(); }, [refreshPerms]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (s: AppStateStatus) => {
+      if (s === "active") refreshPerms();
+    });
+    return () => sub.remove();
+  }, [refreshPerms]);
+
+  async function handlePermAction(action: () => Promise<void>) {
+    await action();
+    await refreshPerms();
   }
 
   const adhanEnabled = settings.adhanEnabled  ?? false;
@@ -858,6 +893,67 @@ export default function SettingsScreen() {
           </View>
         </View>
       </SettingsSection>
+
+      {/* ── Permissions ───────────────────────────────────────────────────── */}
+      {Platform.OS === "android" && (
+        <SettingsSection title={isArabic ? "الأذونات" : "Permissions"} colors={colors}>
+          {[
+            {
+              key:    "notif",
+              label:  isArabic ? "الإشعارات" : "Notifications",
+              status: notifPerm,
+              onPress: () => handlePermAction(openNotificationSettings),
+            },
+            {
+              key:    "alarm",
+              label:  isArabic ? "المنبهات الدقيقة" : "Exact Alarms",
+              status: "unknown" as PermStatus,
+              onPress: () => handlePermAction(openExactAlarmSettings),
+            },
+            {
+              key:    "battery",
+              label:  isArabic ? "تحسين البطارية" : "Battery Optimization",
+              status: "unknown" as PermStatus,
+              onPress: () => handlePermAction(openBatteryOptimizationSettings),
+            },
+            {
+              key:    "overlay",
+              label:  isArabic ? "عرض فوق التطبيقات" : "Display Over Apps",
+              status: "unknown" as PermStatus,
+              onPress: () => handlePermAction(openOverlaySettings),
+            },
+            {
+              key:    "location",
+              label:  isArabic ? "الموقع الجغرافي" : "Location",
+              status: locPerm,
+              onPress: () => handlePermAction(openLocationSettings),
+            },
+          ].map((row) => (
+            <SettingsRow key={row.key} colors={colors}>
+              <View
+                style={{
+                  width: 8, height: 8, borderRadius: 4,
+                  backgroundColor:
+                    row.status === "granted"  ? "#10b981" :
+                    row.status === "denied"   ? "#ef4444" :
+                    colors.mutedForeground + "60",
+                }}
+              />
+              <Text style={[styles.rowLabel, { color: colors.foreground, flex: 1 }]}>
+                {row.label}
+              </Text>
+              <TouchableOpacity
+                style={[styles.changeBtn, { backgroundColor: colors.secondary, borderRadius: 8, borderWidth: 1, borderColor: colors.border }]}
+                onPress={row.onPress}
+              >
+                <Text style={[styles.changeBtnText, { color: colors.primary }]}>
+                  {isArabic ? "إعداد" : "Configure"}
+                </Text>
+              </TouchableOpacity>
+            </SettingsRow>
+          ))}
+        </SettingsSection>
+      )}
 
       {/* ── About ─────────────────────────────────────────────────────────── */}
       <SettingsSection title={t("s_about")} colors={colors}>

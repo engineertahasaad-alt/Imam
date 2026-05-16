@@ -100,7 +100,7 @@ export default function SetupScreen() {
       cityName,
       userName: userName.trim() || undefined,
     });
-    router.push("/onboarding/calibration");
+    router.push("/onboarding/permissions");
   }
 
   return (

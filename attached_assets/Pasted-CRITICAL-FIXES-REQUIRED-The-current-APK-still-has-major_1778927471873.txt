@@ -1,0 +1,139 @@
+CRITICAL FIXES REQUIRED
+
+The current APK still has major Android permission and alarm issues.
+
+========================
+
+1. ADHAN / ALARM FAILURE
+   ========================
+
+Problem:
+Adhan sound is not triggering correctly:
+
+* not on prayer time
+* not on wrong-time test triggers
+* sometimes notifications appear without sound
+* sometimes nothing happens at all
+
+Fix the entire alarm/notification architecture properly.
+
+Requirements:
+
+* Ensure Adhan alarms trigger reliably in:
+
+  * foreground
+  * background
+  * minimized app
+  * locked screen
+
+* Use proper Android alarm scheduling:
+
+  * AlarmManager
+  * exact alarms where needed
+  * foreground services if necessary
+
+* Ensure alarm sound ALWAYS plays correctly.
+
+* Configure Android notification channels properly:
+
+  * HIGH importance
+  * sound enabled
+  * vibration enabled
+
+* Ensure audio works even when:
+
+  * screen locked
+  * app closed
+  * battery optimization active
+
+* Add fallback recovery if Android kills background process.
+
+* Test:
+
+  * immediate test alarm
+  * scheduled prayer alarm
+  * recurring reminders
+
+========================
+2. RUNTIME PERMISSIONS FLOW
+===========================
+
+The app is NOT requesting permissions correctly.
+
+Currently the user has to manually open Android settings and enable permissions himself.
+
+This is incorrect UX.
+
+Implement a complete Android runtime-permission flow.
+
+The app MUST:
+
+1. Detect missing permissions automatically
+2. Explain WHY each permission is needed
+3. Request permissions one-by-one properly
+4. Open correct Android settings screens automatically when needed
+5. Return user back smoothly to the app
+
+Permissions include:
+
+* Notifications
+* Exact alarms
+* Overlay / display over other apps
+* Location
+* Foreground service
+* Ignore battery optimization
+* Vibration
+* Background activity permissions if supported
+
+========================
+3. SETTINGS PAGE SHORTCUTS
+==========================
+
+Inside settings screen, add dedicated buttons for:
+
+* Notification permission
+* Overlay permission
+* Battery optimization settings
+* Alarm permission
+* Location permission
+
+Each button should:
+
+* detect current permission state
+* open the exact Android settings page directly
+
+========================
+4. FIRST LAUNCH EXPERIENCE
+==========================
+
+On first launch:
+
+The app should guide the user step-by-step through required permissions.
+
+Flow example:
+
+1. Welcome
+2. Language selection
+3. Notification permission
+4. Alarm permission
+5. Overlay permission
+6. Battery optimization exclusion
+7. Finish setup
+
+This setup flow is mandatory for reliable app functionality.
+
+========================
+5. IMPORTANT IMPLEMENTATION RULE
+================================
+
+Do NOT fake permission success.
+
+The app must verify ACTUAL Android permission states before assuming features work.
+
+If any critical permission is missing:
+
+* show warning
+* explain impact
+* guide user to fix it
+
+Do NOT silently fail.
