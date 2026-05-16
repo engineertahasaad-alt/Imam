@@ -35,7 +35,7 @@
       "channel": "preview",
       "android": {
         "buildType": "apk",
-        "autoIncrement": "buildNumber"
+        "autoIncrement": "versionCode"
       },
       "env": {
         "EXPO_PUBLIC_ENV": "preview"
@@ -48,7 +48,7 @@
       "channel": "production",
       "android": {
         "buildType": "app-bundle",
-        "autoIncrement": "buildNumber"
+        "autoIncrement": "versionCode"
       },
       "env": {
         "EXPO_PUBLIC_ENV": "production"
