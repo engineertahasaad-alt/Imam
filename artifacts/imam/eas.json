@@ -4,9 +4,21 @@
     "appVersionSource": "local"
   },
   "build": {
+    "base": {
+      "cache": {
+        "key": "imam-v1",
+        "paths": [
+          "node_modules",
+          ".expo"
+        ]
+      },
+      "node": "22.14.0"
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
+      "resourceClass": "medium",
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleDebug"
@@ -16,18 +28,24 @@
       }
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
+      "resourceClass": "medium",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "autoIncrement": "buildNumber"
       },
       "env": {
         "EXPO_PUBLIC_ENV": "preview"
       }
     },
     "production": {
+      "extends": "base",
       "distribution": "store",
+      "resourceClass": "large",
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "autoIncrement": "buildNumber"
       },
       "env": {
         "EXPO_PUBLIC_ENV": "production"
