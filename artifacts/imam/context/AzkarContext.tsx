@@ -40,6 +40,11 @@ interface AzkarContextType {
   dailyCompletion: DailyCompletionRecord;
   markComplete: (category: "morning" | "evening") => Promise<void>;
   refreshCompletion: () => Promise<void>;
+  /** Messenger-style daily reminder bubble */
+  bubbleVisible: boolean;
+  bubbleType: "morning" | "evening" | null;
+  showReminderBubble: (type: "morning" | "evening") => void;
+  dismissBubble: () => void;
 }
 
 const AzkarContext = createContext<AzkarContextType | null>(null);
@@ -55,11 +60,14 @@ export function AzkarProvider({ children }: { children: React.ReactNode }) {
   const [currentZikr, setCurrentZikr]       = useState<Zikr | null>(null);
   const [widgetVisible, setVisible]         = useState(false);
   const [dailyCompletion, setCompletion]    = useState<DailyCompletionRecord>(EMPTY_COMPLETION);
+  const [bubbleVisible, setBubbleVisible]   = useState(false);
+  const [bubbleType, setBubbleType]         = useState<"morning" | "evening" | null>(null);
 
-  const settingsRef   = useRef(settings);
-  const timerRef      = useRef<ReturnType<typeof setInterval> | null>(null);
-  const autoHideRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastShownRef  = useRef<number>(0);
+  const settingsRef       = useRef(settings);
+  const timerRef          = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoHideRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastShownRef      = useRef<number>(0);
+  const lastBubbleKeyRef  = useRef<string>("");
 
   settingsRef.current = settings;
 
@@ -125,6 +133,47 @@ export function AzkarProvider({ children }: { children: React.ReactNode }) {
     setVisible(false);
   }, []);
 
+  // ── Daily reminder bubble (Messenger-style) ───────────────────────────────
+
+  const showReminderBubble = useCallback((type: "morning" | "evening") => {
+    setBubbleType(type);
+    setBubbleVisible(true);
+  }, []);
+
+  const dismissBubble = useCallback(() => {
+    setBubbleVisible(false);
+  }, []);
+
+  // Check every 30 s whether morning/evening reminder time has arrived.
+  // Only triggers when the app is in the foreground (this timer doesn't run
+  // when the app is suspended — the system notification handles that case).
+  useEffect(() => {
+    const bubbleTimerRef = setInterval(() => {
+      const s = settingsRef.current;
+      const now = new Date();
+      const h   = now.getHours();
+      const m   = now.getMinutes();
+      const dateKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+
+      if (s.morningReminderEnabled && h === s.morningReminderHour && m === s.morningReminderMinute) {
+        const key = `morning-${dateKey}-${h}:${m}`;
+        if (lastBubbleKeyRef.current !== key) {
+          lastBubbleKeyRef.current = key;
+          showReminderBubble("morning");
+        }
+      }
+      if (s.eveningReminderEnabled && h === s.eveningReminderHour && m === s.eveningReminderMinute) {
+        const key = `evening-${dateKey}-${h}:${m}`;
+        if (lastBubbleKeyRef.current !== key) {
+          lastBubbleKeyRef.current = key;
+          showReminderBubble("evening");
+        }
+      }
+    }, 30_000);
+
+    return () => clearInterval(bubbleTimerRef);
+  }, [showReminderBubble]);
+
   const updateSettings = useCallback(async (partial: Partial<AzkarSettings>) => {
     const updated = await saveAzkarSettings(partial);
     setSettings(updated);
@@ -173,6 +222,10 @@ export function AzkarProvider({ children }: { children: React.ReactNode }) {
         dailyCompletion,
         markComplete,
         refreshCompletion,
+        bubbleVisible,
+        bubbleType,
+        showReminderBubble,
+        dismissBubble,
       }}
     >
       {children}

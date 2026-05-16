@@ -17,6 +17,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { setBaseUrl } from "@workspace/api-client-react";
 
 import { AzkarFloatingWidget } from "@/components/AzkarFloatingWidget";
+import { AzkarReminderBubble } from "@/components/AzkarReminderBubble";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/context/AppContext";
 import { AzkarProvider } from "@/context/AzkarContext";
@@ -50,8 +51,14 @@ function RootLayoutNav() {
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="custom-azkar" />
-      <Stack.Screen name="azkar-morning" />
-      <Stack.Screen name="azkar-evening" />
+      <Stack.Screen
+        name="azkar-morning"
+        options={{ presentation: "modal", animation: "slide_from_bottom" }}
+      />
+      <Stack.Screen
+        name="azkar-evening"
+        options={{ presentation: "modal", animation: "slide_from_bottom" }}
+      />
     </Stack>
   );
 }
@@ -94,6 +101,7 @@ export default function RootLayout() {
                 <KeyboardProvider>
                   <RootLayoutNav />
                   <AzkarFloatingWidget />
+                  <AzkarReminderBubble />
                 </KeyboardProvider>
               </GestureHandlerRootView>
             </AzkarProvider>
