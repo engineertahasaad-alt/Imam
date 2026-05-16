@@ -8,13 +8,13 @@
     "build": "node scripts/build.js",
     "serve": "node server/serve.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "apk": "EXPO_TOKEN=$EXPO_TOKEN eas build --profile preview --platform android --non-interactive",
-    "apk:dev": "EXPO_TOKEN=$EXPO_TOKEN eas build --profile development --platform android --non-interactive",
-    "aab": "EXPO_TOKEN=$EXPO_TOKEN eas build --profile production --platform android --non-interactive",
-    "submit": "EXPO_TOKEN=$EXPO_TOKEN eas submit --profile production --platform android --non-interactive",
-    "update": "EXPO_TOKEN=$EXPO_TOKEN eas update --channel production --non-interactive --message",
-    "update:preview": "EXPO_TOKEN=$EXPO_TOKEN eas update --channel preview --non-interactive --message",
-    "update:dev": "EXPO_TOKEN=$EXPO_TOKEN eas update --channel development --non-interactive --message"
+    "apk": "EXPO_TOKEN=$EXPO_TOKEN pnpm exec eas build --profile preview --platform android --non-interactive",
+    "apk:dev": "EXPO_TOKEN=$EXPO_TOKEN pnpm exec eas build --profile development --platform android --non-interactive",
+    "aab": "EXPO_TOKEN=$EXPO_TOKEN pnpm exec eas build --profile production --platform android --non-interactive",
+    "submit": "EXPO_TOKEN=$EXPO_TOKEN pnpm exec eas submit --profile production --platform android --non-interactive",
+    "update": "EXPO_TOKEN=$EXPO_TOKEN pnpm exec eas update --channel production --non-interactive --message",
+    "update:preview": "EXPO_TOKEN=$EXPO_TOKEN pnpm exec eas update --channel preview --non-interactive --message",
+    "update:dev": "EXPO_TOKEN=$EXPO_TOKEN pnpm exec eas update --channel development --non-interactive --message"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -31,6 +31,7 @@
     "@workspace/api-client-react": "workspace:*",
     "adhan-alarm": "file:./modules/adhan-alarm",
     "babel-plugin-react-compiler": "^19.0.0-beta-e993439-20250117",
+    "eas-cli": "^18.13.0",
     "expo": "~54.0.27",
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.11",
