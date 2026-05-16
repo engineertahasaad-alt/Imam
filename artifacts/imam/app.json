@@ -55,6 +55,7 @@
       "favicon": "./assets/images/icon.png"
     },
     "plugins": [
+      "./plugins/withAdhanAlarm",
       [
         "expo-router",
         {

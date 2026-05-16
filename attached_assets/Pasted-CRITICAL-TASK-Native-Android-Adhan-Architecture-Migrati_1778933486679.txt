@@ -1,0 +1,186 @@
+CRITICAL TASK:
+Native Android Adhan Architecture Migration
+
+IMPORTANT:
+This task is ONLY about fixing Adhan/alarm reliability on Android.
+
+Do NOT modify:
+
+* UI
+* onboarding
+* typography
+* floating azkar design
+* posture detection
+* navigation
+* styling
+
+Focus ONLY on reliable native Adhan execution.
+
+========================
+MANDATORY SAFETY RULES
+======================
+
+1. Before ANY modification:
+   Create a full Git checkpoint/commit.
+
+2. Do NOT perform massive refactors.
+
+3. Do NOT rebuild the app from scratch.
+
+4. Do NOT break current APK build.
+
+5. Work incrementally in small safe steps.
+
+6. Preserve all existing app features.
+
+========================
+CURRENT PROBLEM
+===============
+
+Adhan audio does not reliably play:
+
+* when app minimized
+* when app closed
+* when screen locked
+* during exact prayer time
+
+Current implementation is unreliable.
+
+========================
+STRICT REQUIREMENTS
+===================
+
+The following solutions are NOT acceptable alone:
+
+* JS timers
+* setTimeout
+* setInterval
+* simple expo-notifications scheduling
+* fake background tasks
+* delayed polling loops
+
+========================
+REQUIRED ARCHITECTURE
+=====================
+
+Implement REAL Android-native alarm flow:
+
+AlarmManager
+→ BroadcastReceiver
+→ ForegroundService
+→ Audio Playback
+
+The implementation MUST support:
+
+* exact prayer alarms
+* locked screen
+* minimized app
+* app fully closed
+* after reboot
+* Android Doze mode
+* Samsung/Xiaomi aggressive battery systems
+
+========================
+MANDATORY NATIVE COMPONENTS
+===========================
+
+The project MUST support and implement:
+
+1. AlarmManager
+   using:
+   setExactAndAllowWhileIdle()
+
+2. BroadcastReceiver
+   for receiving prayer alarm events
+
+3. ForegroundService
+   for protected background execution
+
+4. BOOT_COMPLETED Receiver
+   to restore alarms after reboot
+
+5. Native audio playback handling
+
+6. Android audio focus APIs
+
+7. Exact alarm permission handling for Android 12+
+
+========================
+EXPO REQUIREMENTS
+=================
+
+If current Expo Managed workflow blocks implementation:
+
+Migrate safely to:
+Expo Development Build
+or Bare Workflow if absolutely necessary.
+
+Do NOT stay trapped inside limited Expo notification architecture.
+
+========================
+ANTI-FAKE IMPLEMENTATION RULES
+==============================
+
+You MUST provide evidence of REAL implementation.
+
+After implementation, show:
+
+1. Native Android files created/modified
+
+Examples:
+
+* AndroidManifest.xml
+* BroadcastReceiver classes
+* ForegroundService classes
+* BootReceiver classes
+* native modules if added
+
+2. Exact native APIs used
+
+3. How alarms are scheduled
+
+4. How playback survives app termination
+
+5. How reboot restoration works
+
+6. How Samsung battery restrictions are handled
+
+========================
+MANDATORY TESTS
+===============
+
+Verify ALL cases:
+
+* Adhan plays while app open
+* Adhan plays while minimized
+* Adhan plays while screen locked
+* Adhan plays after app swipe-close
+* Adhan plays after reboot
+* Test alarm works instantly
+
+========================
+DEBUGGING
+=========
+
+Add debug logs for:
+
+* alarm scheduled
+* alarm triggered
+* foreground service started
+* audio playback started
+* playback failed
+
+Do NOT fail silently.
+
+========================
+PERFORMANCE RULES
+=================
+
+Do NOT:
+
+* drain battery
+* create infinite loops
+* abuse wake locks
+* use aggressive polling
+
+Use event-driven native scheduling only.

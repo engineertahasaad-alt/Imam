@@ -1,0 +1,6 @@
+{
+  "platforms": ["android"],
+  "android": {
+    "modulesClassNames": ["com.imam.app.adhan.AdhanAlarmModule"]
+  }
+}

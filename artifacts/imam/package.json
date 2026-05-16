@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
+    "adhan-alarm": "file:./modules/adhan-alarm",
     "@babel/core": "^7.25.2",
     "@expo-google-fonts/inter": "^0.4.0",
     "@expo/cli": "54.0.23",

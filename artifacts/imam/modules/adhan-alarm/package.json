@@ -1,0 +1,7 @@
+{
+  "name": "adhan-alarm",
+  "version": "1.0.0",
+  "description": "Native Android AlarmManager module for reliable Adhan playback",
+  "private": true,
+  "main": "index"
+}

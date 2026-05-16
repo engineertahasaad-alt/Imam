@@ -273,6 +273,9 @@ importers:
       '@workspace/api-client-react':
         specifier: workspace:*
         version: link:../../lib/api-client-react
+      adhan-alarm:
+        specifier: file:./modules/adhan-alarm
+        version: file:artifacts/imam/modules/adhan-alarm
       babel-plugin-react-compiler:
         specifier: ^19.0.0-beta-e993439-20250117
         version: 19.0.0-beta-ebf51a3-20250411
@@ -2517,6 +2520,9 @@ packages:
     resolution: {integrity: sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw==}
     engines: {node: '>=0.4.0'}
     hasBin: true
+
+  adhan-alarm@file:artifacts/imam/modules/adhan-alarm:
+    resolution: {directory: artifacts/imam/modules/adhan-alarm, type: directory}
 
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
@@ -8534,6 +8540,8 @@ snapshots:
       negotiator: 1.0.0
 
   acorn@8.16.0: {}
+
+  adhan-alarm@file:artifacts/imam/modules/adhan-alarm: {}
 
   agent-base@7.1.4: {}
 

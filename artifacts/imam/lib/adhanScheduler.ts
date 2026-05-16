@@ -1,10 +1,16 @@
 /**
- * Adhan Scheduler — Background task + critical Android permissions
+ * Adhan Scheduler — orchestrates native AlarmManager (Android) with
+ * an expo-notifications fallback for Expo Go and iOS.
  *
- * Three reliability layers:
- * 1. Notification channels (MAX importance, bypassDnd) — fires sound on any app state
- * 2. Background fetch task (startOnBoot) — reschedules after phone reboot or app kill
- * 3. Battery optimization + exact alarm permissions — prevents Android from blocking alarms
+ * ┌────────────────────────────────────────────────────────────────────┐
+ * │ LAYER 1 (Android, Development Build / APK)                        │
+ * │   AlarmManager.setAlarmClock() → BroadcastReceiver               │
+ * │     → ForegroundService → MediaPlayer (USAGE_ALARM)              │
+ * │   Survives: Doze, battery-saver, Samsung/Xiaomi killers, reboot  │
+ * ├────────────────────────────────────────────────────────────────────┤
+ * │ LAYER 2 (Expo Go / iOS / fallback)                                │
+ * │   expo-notifications DATE trigger + MAX-importance channel        │
+ * └────────────────────────────────────────────────────────────────────┘
  *
  * IMPORTANT: TaskManager.defineTask() MUST run at module-load time (top level).
  * Import this file in _layout.tsx so the task is registered before any scheduling.
@@ -15,6 +21,8 @@ import * as IntentLauncher from "expo-intent-launcher";
 import * as TaskManager from "expo-task-manager";
 import { Alert, Platform } from "react-native";
 
+import { AdhanAlarmModule } from "adhan-alarm";
+import type { AdhanVoice } from "./storage";
 import { scheduleAdhanNotifications } from "./adhanEngine";
 import { setupNotificationChannels, scheduleAllPrayerReminders } from "./notifications";
 import { calculatePrayerTimes, CalculationMethod } from "./prayerCalculator";
@@ -23,7 +31,7 @@ import { getSettings } from "./storage";
 export const ADHAN_RESCHEDULE_TASK = "adhan-reschedule-task";
 
 // ── Background task definition (MUST be top-level) ───────────────────────────
-// Runs after phone reboot and periodically to keep notifications scheduled.
+// Runs periodically to keep notifications / native alarms scheduled.
 TaskManager.defineTask(ADHAN_RESCHEDULE_TASK, async () => {
   try {
     const settings = await getSettings();
@@ -40,7 +48,7 @@ TaskManager.defineTask(ADHAN_RESCHEDULE_TASK, async () => {
       (settings.calculationMethod as CalculationMethod) ?? "MWL"
     );
 
-    const prayerMap = {
+    const prayerMap: Record<string, Date> = {
       Fajr:    times.fajr,
       Dhuhr:   times.dhuhr,
       Asr:     times.asr,
@@ -49,7 +57,8 @@ TaskManager.defineTask(ADHAN_RESCHEDULE_TASK, async () => {
     };
 
     if (settings.adhanEnabled !== false) {
-      await scheduleAdhanNotifications(prayerMap, (settings.adhanVoice as any) ?? "abdulbasit", true);
+      const voice = (settings.adhanVoice as AdhanVoice) ?? "abdulbasit";
+      await scheduleAdhan(prayerMap, voice, true);
     }
     if (settings.notificationsEnabled !== false) {
       await scheduleAllPrayerReminders(prayerMap, settings.reminderOffsetMinutes ?? 5);
@@ -61,7 +70,70 @@ TaskManager.defineTask(ADHAN_RESCHEDULE_TASK, async () => {
   }
 });
 
-// ── Register the background/boot task ────────────────────────────────────────
+// ── Public API ────────────────────────────────────────────────────────────────
+
+/**
+ * Schedule adhan alarms for tomorrow's prayer times.
+ * On Android with a Development Build → uses AlarmManager (reliable).
+ * On Android with Expo Go / iOS        → uses expo-notifications (fallback).
+ */
+export async function scheduleAdhan(
+  times:   Record<string, Date>,
+  voice:   AdhanVoice,
+  enabled: boolean
+): Promise<void> {
+  if (Platform.OS === "web") return;
+  if (!enabled) {
+    await cancelAdhan();
+    return;
+  }
+
+  if (Platform.OS === "android" && AdhanAlarmModule.isAvailable()) {
+    await scheduleNativeAlarms(times, voice);
+  } else {
+    // Expo Go or iOS: fall back to expo-notifications
+    await scheduleAdhanNotifications(times, voice, true);
+  }
+}
+
+/** Cancel all adhan alarms (both native and notification-based). */
+export async function cancelAdhan(): Promise<void> {
+  if (Platform.OS === "web") return;
+  if (AdhanAlarmModule.isAvailable()) {
+    AdhanAlarmModule.cancelAllAlarms();
+  }
+  // Always cancel notifications too (clears any previously scheduled ones)
+  const { cancelAdhanNotifications } = await import("./adhanEngine");
+  await cancelAdhanNotifications();
+}
+
+// ── Native AlarmManager scheduling ───────────────────────────────────────────
+
+async function scheduleNativeAlarms(
+  times: Record<string, Date>,
+  voice: AdhanVoice
+): Promise<void> {
+  const PRAYER_ORDER = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"] as const;
+
+  // Cancel existing native alarms before rescheduling
+  AdhanAlarmModule.cancelAllAlarms();
+
+  const now = Date.now();
+  for (const prayer of PRAYER_ORDER) {
+    const time = times[prayer];
+    if (!time || time.getTime() <= now) continue;
+
+    const ok = AdhanAlarmModule.scheduleAlarm(time.getTime(), voice, prayer);
+    if (!ok) {
+      // Native scheduling failed — fall back to expo-notifications for this prayer
+      console.warn(`[AdhanScheduler] Native alarm failed for ${prayer} — using notification fallback`);
+      await scheduleAdhanNotifications({ [prayer]: time }, voice, true);
+    }
+  }
+}
+
+// ── Register the background / boot task ──────────────────────────────────────
+
 export async function registerRescheduleTask(): Promise<void> {
   if (Platform.OS === "web") return;
   try {
@@ -70,35 +142,35 @@ export async function registerRescheduleTask(): Promise<void> {
       await BackgroundFetch.registerTaskAsync(ADHAN_RESCHEDULE_TASK, {
         minimumInterval: 6 * 60 * 60, // run every 6 hours at most
         stopOnTerminate: false,        // keep running after app is closed
-        startOnBoot:     true,         // reschedule after phone reboot
+        startOnBoot:     true,         // reschedule after phone reboot (Expo Go fallback path)
       });
     }
   } catch { /* ignore — some emulators don't support background fetch */ }
 }
 
 // ── Request critical Android permissions for reliable adhan ──────────────────
+
 /**
- * Shows two Android system dialogs:
- *  1. "Disable battery optimisation" — prevents Android from killing alarm scheduler
- *  2. "Allow exact alarms" (Android 12+) — ensures prayer notifications fire on time
+ * Shows system dialogs to:
+ *   1. Disable battery optimisation (prevents Android from killing scheduler)
+ *   2. Allow exact alarms (Android 12+ / API 31+)
  *
  * Should be called once during onboarding and can be re-triggered from Settings.
  */
 export async function requestCriticalPermissions(): Promise<void> {
   if (Platform.OS !== "android") return;
 
-  // Step 1 — Battery optimisation dialog
-  // Appears as a system dialog: "Allow Imam to always run in the background?"
   await new Promise<void>((resolve) => {
     Alert.alert(
       "Enable Reliable Adhan",
-      "To play Adhan on time even when your screen is off or you're using another app, Imam needs two quick settings:\n\n" +
+      "To play Adhan on time even when your screen is off or you're using another app, " +
+      "Imam needs two quick settings:\n\n" +
       "1. Disable battery optimisation (keeps alarms alive)\n" +
       "2. Allow exact alarms (fires at the exact prayer time)\n\n" +
       "Press OK to open each setting.",
       [
         { text: "Not Now", style: "cancel", onPress: () => resolve() },
-        { text: "OK", onPress: () => resolve() },
+        { text: "OK",                       onPress: () => resolve() },
       ]
     );
   });
@@ -110,7 +182,6 @@ export async function requestCriticalPermissions(): Promise<void> {
       { data: "package:com.imam.app" }
     );
   } catch {
-    // Fallback: open general battery settings
     try {
       await IntentLauncher.startActivityAsync(
         IntentLauncher.ActivityAction.IGNORE_BATTERY_OPTIMIZATION_SETTINGS

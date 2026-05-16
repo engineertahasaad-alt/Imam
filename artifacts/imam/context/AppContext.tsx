@@ -39,10 +39,10 @@ import {
 import {
   registerRescheduleTask,
   requestCriticalPermissions,
+  scheduleAdhan,
 } from "@/lib/adhanScheduler";
 import {
   playAdhanInApp,
-  scheduleAdhanNotifications,
   stopAdhan,
 } from "@/lib/adhanEngine";
 import { setStoredTheme } from "@/lib/themeStore";
@@ -249,7 +249,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // race against and wipe freshly-scheduled adhan notifications.
       (async () => {
         await scheduleAllPrayerReminders(prayerMap, reminderOffset);
-        await scheduleAdhanNotifications(prayerMap, adhanVoice as any, adhanEnabled);
+        await scheduleAdhan(prayerMap, adhanVoice as any, adhanEnabled);
       })().catch(() => {});
     }
 
@@ -343,7 +343,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ) {
       const t = todayTimesRef.current;
       if (t && Platform.OS !== "web") {
-        scheduleAdhanNotifications(
+        scheduleAdhan(
           { Fajr: t.fajr, Dhuhr: t.dhuhr, Asr: t.asr, Maghrib: t.maghrib, Isha: t.isha },
           (updated.adhanVoice ?? "alafasy") as any,
           updated.adhanEnabled ?? false
