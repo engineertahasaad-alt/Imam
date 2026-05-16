@@ -10,7 +10,10 @@
     "apk": "pnpm --filter @workspace/imam apk",
     "apk:dev": "pnpm --filter @workspace/imam apk:dev",
     "aab": "pnpm --filter @workspace/imam aab",
-    "submit": "pnpm --filter @workspace/imam submit"
+    "submit": "pnpm --filter @workspace/imam submit",
+    "update": "pnpm --filter @workspace/imam update",
+    "update:preview": "pnpm --filter @workspace/imam update:preview",
+    "update:dev": "pnpm --filter @workspace/imam update:dev"
   },
   "private": true,
   "devDependencies": {
