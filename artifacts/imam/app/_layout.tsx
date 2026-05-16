@@ -18,6 +18,7 @@ import { setBaseUrl } from "@workspace/api-client-react";
 
 import { AzkarFloatingWidget } from "@/components/AzkarFloatingWidget";
 import { AzkarReminderBubble } from "@/components/AzkarReminderBubble";
+import { UpdateBanner } from "@/components/UpdateBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/context/AppContext";
 import { AzkarProvider } from "@/context/AzkarContext";
@@ -99,6 +100,7 @@ export default function RootLayout() {
             <AzkarProvider>
               <GestureHandlerRootView style={{ flex: 1 }}>
                 <KeyboardProvider>
+                  <UpdateBanner />
                   <RootLayoutNav />
                   <AzkarFloatingWidget />
                   <AzkarReminderBubble />
