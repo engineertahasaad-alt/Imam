@@ -30,6 +30,42 @@ import { getSettings } from "./storage";
 
 export const ADHAN_RESCHEDULE_TASK = "adhan-reschedule-task";
 
+// ── "Next occurrence" map — always gives a future time for each prayer ────────
+
+/**
+ * For each prayer, returns today's time if it's still in the future,
+ * otherwise tomorrow's time.  This prevents a gap where no adhan fires
+ * between the last prayer of the day and the Fajr of the next day.
+ */
+function buildNextOccurrencePrayerMap(
+  lat:    number,
+  lng:    number,
+  method: CalculationMethod
+): Record<string, Date> {
+  const today    = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const todayTimes = calculatePrayerTimes(lat, lng, today,    method);
+  const tmrwTimes  = calculatePrayerTimes(lat, lng, tomorrow, method);
+
+  const todayMap: Record<string, Date> = {
+    Fajr: todayTimes.fajr, Dhuhr: todayTimes.dhuhr, Asr: todayTimes.asr,
+    Maghrib: todayTimes.maghrib, Isha: todayTimes.isha,
+  };
+  const tmrwMap: Record<string, Date> = {
+    Fajr: tmrwTimes.fajr, Dhuhr: tmrwTimes.dhuhr, Asr: tmrwTimes.asr,
+    Maghrib: tmrwTimes.maghrib, Isha: tmrwTimes.isha,
+  };
+
+  const now    = Date.now();
+  const result: Record<string, Date> = {};
+  for (const name of Object.keys(todayMap)) {
+    result[name] = todayMap[name].getTime() > now ? todayMap[name] : tmrwMap[name];
+  }
+  return result;
+}
+
 // ── Background task definition (MUST be top-level) ───────────────────────────
 // Runs periodically to keep notifications / native alarms scheduled.
 TaskManager.defineTask(ADHAN_RESCHEDULE_TASK, async () => {
@@ -41,20 +77,12 @@ TaskManager.defineTask(ADHAN_RESCHEDULE_TASK, async () => {
 
     await setupNotificationChannels();
 
-    const times = calculatePrayerTimes(
+    const method    = (settings.calculationMethod as CalculationMethod) ?? "MWL";
+    const prayerMap = buildNextOccurrencePrayerMap(
       settings.latitude,
       settings.longitude,
-      new Date(),
-      (settings.calculationMethod as CalculationMethod) ?? "MWL"
+      method
     );
-
-    const prayerMap: Record<string, Date> = {
-      Fajr:    times.fajr,
-      Dhuhr:   times.dhuhr,
-      Asr:     times.asr,
-      Maghrib: times.maghrib,
-      Isha:    times.isha,
-    };
 
     if (settings.adhanEnabled !== false) {
       const voice = (settings.adhanVoice as AdhanVoice) ?? "abdulbasit";

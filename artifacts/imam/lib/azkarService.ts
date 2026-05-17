@@ -715,34 +715,42 @@ export async function scheduleDailyReminders(
   await cancelDailyReminders();
 
   if (settings.morningReminderEnabled) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const morningContent: any = {
+      title: "ورد الصباح 🌤️",
+      body:  "حان وقت أذكار الصباح",
+      data:  { route: "/azkar-morning", type: "daily_reminder" },
+    };
+    if (Platform.OS === "android") {
+      morningContent.android = { channelId: CHANNEL_AZKAR };
+    }
     await Notifications.scheduleNotificationAsync({
       identifier: REMINDER_MORNING_ID,
-      content: {
-        title: "ورد الصباح 🌤️",
-        body: "حان وقت أذكار الصباح",
-        data: { route: "/azkar-morning", type: "daily_reminder" },
-        sound: undefined,
-      },
+      content:    morningContent,
       trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: settings.morningReminderHour,
+        type:   Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour:   settings.morningReminderHour,
         minute: settings.morningReminderMinute,
       },
     }).catch(() => {});
   }
 
   if (settings.eveningReminderEnabled) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const eveningContent: any = {
+      title: "ورد المساء 🌙",
+      body:  "حان وقت أذكار المساء",
+      data:  { route: "/azkar-evening", type: "daily_reminder" },
+    };
+    if (Platform.OS === "android") {
+      eveningContent.android = { channelId: CHANNEL_AZKAR };
+    }
     await Notifications.scheduleNotificationAsync({
       identifier: REMINDER_EVENING_ID,
-      content: {
-        title: "ورد المساء 🌙",
-        body: "حان وقت أذكار المساء",
-        data: { route: "/azkar-evening", type: "daily_reminder" },
-        sound: undefined,
-      },
+      content:    eveningContent,
       trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: settings.eveningReminderHour,
+        type:   Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour:   settings.eveningReminderHour,
         minute: settings.eveningReminderMinute,
       },
     }).catch(() => {});

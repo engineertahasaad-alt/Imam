@@ -239,16 +239,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   ): PrayerTimes {
     const times = calculatePrayerTimes(lat, lng, new Date(), method);
 
-    if (Platform.OS !== "web" && notificationsEnabled) {
-      const prayerMap = {
+    if (Platform.OS !== "web") {
+      // Build a "next occurrence" prayer map: for any prayer that has already
+      // passed today, use tomorrow's time instead.  This prevents the gap where
+      // no adhan notification exists between the last prayer of the day and
+      // the Fajr of the following day.
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowTimes = calculatePrayerTimes(lat, lng, tomorrow, method);
+
+      const todayMap: Record<string, Date> = {
         Fajr: times.fajr, Dhuhr: times.dhuhr, Asr: times.asr,
         Maghrib: times.maghrib, Isha: times.isha,
       };
-      // BUG FIX: Run sequentially inside a single async IIFE so that
+      const tmrwMap: Record<string, Date> = {
+        Fajr: tomorrowTimes.fajr, Dhuhr: tomorrowTimes.dhuhr, Asr: tomorrowTimes.asr,
+        Maghrib: tomorrowTimes.maghrib, Isha: tomorrowTimes.isha,
+      };
+
+      const now = Date.now();
+      const prayerMap: Record<string, Date> = {};
+      for (const name of Object.keys(todayMap)) {
+        prayerMap[name] = todayMap[name].getTime() > now
+          ? todayMap[name]
+          : tmrwMap[name];
+      }
+
+      // Run sequentially inside a single async IIFE so that
       // cancelAllPrayerReminders() (inside scheduleAllPrayerReminders) cannot
       // race against and wipe freshly-scheduled adhan notifications.
       (async () => {
-        await scheduleAllPrayerReminders(prayerMap, reminderOffset);
+        if (notificationsEnabled) {
+          await scheduleAllPrayerReminders(prayerMap, reminderOffset);
+        }
         await scheduleAdhan(prayerMap, adhanVoice as any, adhanEnabled);
       })().catch(() => {});
     }
