@@ -153,7 +153,7 @@ export function AzkarProvider({ children }: { children: React.ReactNode }) {
       const now = new Date();
       const h   = now.getHours();
       const m   = now.getMinutes();
-      const dateKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+      const dateKey = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
 
       if (s.morningReminderEnabled && h === s.morningReminderHour && m === s.morningReminderMinute) {
         const key = `morning-${dateKey}-${h}:${m}`;
