@@ -12,7 +12,10 @@ import React, {
   useState,
 } from "react";
 
+import { AdhanAlarmModule } from "adhan-alarm";
+
 import {
+  AZKAR,
   AzkarSettings,
   DailyCompletionRecord,
   DEFAULT_AZKAR_SETTINGS,
@@ -21,6 +24,7 @@ import {
   cancelAzkarNotifications,
   cancelDailyReminders,
   loadAzkarSettings,
+  loadCustomAzkar,
   loadDailyCompletion,
   markCategoryComplete,
   pickNextZikr,
@@ -174,6 +178,25 @@ export function AzkarProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(bubbleTimerRef);
   }, [showReminderBubble]);
 
+  // ── Native floating overlay (Android APK only) ────────────────────────────
+  // Starts FloatingAzkarService so azkar appear above all apps in the background.
+
+  async function syncNativeFloat(enabled: boolean) {
+    if (!AdhanAlarmModule.isAvailable()) return;
+    if (!enabled) {
+      AdhanAlarmModule.stopFloatingService();
+      return;
+    }
+    if (!AdhanAlarmModule.canDrawOverlays()) return;
+    try {
+      const custom   = await loadCustomAzkar();
+      const allTexts = [...AZKAR, ...custom].map((z) => z.arabic).filter(Boolean);
+      AdhanAlarmModule.startFloatingService(allTexts.length > 0 ? allTexts : ["سبحان الله وبحمده"]);
+    } catch {
+      AdhanAlarmModule.startFloatingService(["سبحان الله وبحمده"]);
+    }
+  }
+
   const updateSettings = useCallback(async (partial: Partial<AzkarSettings>) => {
     const updated = await saveAzkarSettings(partial);
     setSettings(updated);
@@ -181,6 +204,7 @@ export function AzkarProvider({ children }: { children: React.ReactNode }) {
     if (partial.enabled !== undefined || partial.frequencyMinutes !== undefined) {
       clearTimers();
       if (updated.enabled) startTimer(updated.frequencyMinutes);
+      syncNativeFloat(updated.enabled).catch(() => {});
     }
 
     scheduleAzkarNotifications(updated).catch(() => {});

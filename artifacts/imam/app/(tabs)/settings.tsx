@@ -133,7 +133,7 @@ export default function SettingsScreen() {
   }
 
   const adhanEnabled = settings.adhanEnabled  ?? false;
-  const adhanVoice   = (settings.adhanVoice   ?? "alafasy") as AdhanVoice;
+  const adhanVoice   = (settings.adhanVoice   ?? "abdulbasit") as AdhanVoice;
   const adhanVolume  = settings.adhanVolume   ?? 0.8;
 
   async function changeAdhanEnabled(val: boolean) {

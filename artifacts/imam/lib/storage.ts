@@ -9,7 +9,6 @@ export type CalculationMethodKey =
   | "Gulf";
 
 export type AdhanVoice =
-  | "alafasy"
   | "abdulbasit"
   | "madinah"
   | "makkah"
@@ -100,7 +99,12 @@ export async function getSettings(): Promise<AppSettings> {
   try {
     const data = await AsyncStorage.getItem(KEYS.SETTINGS);
     if (!data) return defaultSettings();
-    return { ...defaultSettings(), ...JSON.parse(data) };
+    const merged = { ...defaultSettings(), ...JSON.parse(data) };
+    // Migration: alafasy voice was removed — fall back to abdulbasit
+    if ((merged.adhanVoice as string) === "alafasy") {
+      merged.adhanVoice = "abdulbasit";
+    }
+    return merged;
   } catch {
     return defaultSettings();
   }

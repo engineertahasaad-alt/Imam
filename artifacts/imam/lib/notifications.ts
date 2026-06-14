@@ -20,14 +20,14 @@ if (Platform.OS !== "web") {
 }
 
 // ─── Channel IDs ──────────────────────────────────────────────────────────────
-const CHANNEL_VERSION = "v2";
+const CHANNEL_VERSION = "v3";
 export const CHANNEL_ADHAN  = (voice: string) => `adhan_${voice}_${CHANNEL_VERSION}`;
-export const CHANNEL_PRAYER = "prayer_reminder_v2";
-export const CHANNEL_AZKAR  = "azkar_reminder_v2";
+export const CHANNEL_PRAYER = "prayer_reminder_v3";
+export const CHANNEL_AZKAR  = "azkar_reminder_v3";
 
-// Android channel sounds without file extension (res/raw/azan1, etc.)
+// Android channel sounds without file extension (res/raw/azan2, etc.)
+// azan1 (Alafasy) has been removed — files start from azan2.
 const ADHAN_CHANNEL_SOUNDS: Record<string, string> = {
-  alafasy:    "azan1",
   abdulbasit: "azan2",
   madinah:    "azan3",
   makkah:     "azan4",

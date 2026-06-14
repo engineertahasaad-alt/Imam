@@ -38,8 +38,8 @@
         "ACCESS_COARSE_LOCATION",
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
-        "USE_EXACT_ALARM",
         "SCHEDULE_EXACT_ALARM",
+        "android.permission.SYSTEM_ALERT_WINDOW",
         "MODIFY_AUDIO_SETTINGS",
         "WAKE_LOCK",
         "FOREGROUND_SERVICE",
@@ -80,7 +80,6 @@
           "icon": "./assets/images/icon.png",
           "color": "#34d399",
           "sounds": [
-            "./assets/audio/azan1.mp3",
             "./assets/audio/azan2.mp3",
             "./assets/audio/azan3.mp3",
             "./assets/audio/azan4.mp3",

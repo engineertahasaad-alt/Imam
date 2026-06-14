@@ -2,9 +2,10 @@
  * withAdhanAlarm — Expo Config Plugin
  *
  * Patches AndroidManifest.xml to register:
- *   • AdhanAlarmReceiver  — receives AlarmManager intents at prayer time
- *   • AdhanBootReceiver   — restores alarms after reboot / app update
+ *   • AdhanAlarmReceiver     — receives AlarmManager intents at prayer time
+ *   • AdhanBootReceiver      — restores alarms after reboot / app update
  *   • AdhanForegroundService — plays full adhan audio as a protected service
+ *   • FloatingAzkarService   — renders azkar overlay above all apps (SYSTEM_ALERT_WINDOW)
  *
  * Applied in app.json under "plugins".
  * Runs during `expo prebuild` / EAS Build.
@@ -46,7 +47,7 @@ const withAdhanAlarm: ConfigPlugin = (config) =>
         "android:enabled":  "true",
       },
       "intent-filter": [{
-        $: { "android:priority": "999" },   // run early in the boot sequence
+        $: { "android:priority": "999" },
         action: [
           { $: { "android:name": "android.intent.action.BOOT_COMPLETED" } },
           { $: { "android:name": "android.intent.action.QUICKBOOT_POWERON" } },
@@ -66,6 +67,25 @@ const withAdhanAlarm: ConfigPlugin = (config) =>
         "android:foregroundServiceType": "mediaPlayback",
         "android:stopWithTask":          "false",
       },
+    });
+
+    // ── FloatingAzkarService ──────────────────────────────────────────────────
+    // Shows azkar text above all apps using WindowManager TYPE_APPLICATION_OVERLAY.
+    // Requires SYSTEM_ALERT_WINDOW permission (declared in app.json permissions).
+    // foregroundServiceType=specialUse: required for overlay services on Android 14+.
+    upsert(app.service as any[], ".adhan.FloatingAzkarService", {
+      $: {
+        "android:name":                  ".adhan.FloatingAzkarService",
+        "android:exported":              "false",
+        "android:foregroundServiceType": "specialUse",
+        "android:stopWithTask":          "false",
+      },
+      "property": [{
+        $: {
+          "android:name":  "android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE",
+          "android:value": "floating azkar overlay",
+        },
+      }],
     });
 
     return cfg;

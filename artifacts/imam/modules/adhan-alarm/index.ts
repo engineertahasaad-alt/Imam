@@ -17,6 +17,9 @@ interface NativeAdhanAlarmModule {
   cancelAlarm(prayer: string): void;
   cancelAllAlarms(): void;
   canScheduleExactAlarms(): boolean;
+  startFloatingService(azkarJson: string): void;
+  stopFloatingService(): void;
+  canDrawOverlays(): boolean;
 }
 
 let _native: NativeAdhanAlarmModule | null = null;
@@ -24,7 +27,6 @@ let _native: NativeAdhanAlarmModule | null = null;
 if (Platform.OS === "android") {
   try {
     // requireNativeModule throws in Expo Go — caught gracefully below.
-    // Typed manually to avoid importing expo-modules-core types in this sub-package.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const rnm = require("expo-modules-core") as {
       requireNativeModule: <T>(name: string) => T;
@@ -73,5 +75,36 @@ export const AdhanAlarmModule = {
   canScheduleExactAlarms: (): boolean => {
     if (!_native) return false;
     try { return _native.canScheduleExactAlarms(); } catch { return false; }
+  },
+
+  /**
+   * Start the FloatingAzkarService with a list of zikr texts.
+   * The service shows a draggable overlay above all apps.
+   * Requires SYSTEM_ALERT_WINDOW permission (Draw Over Apps).
+   * @param azkarTexts Array of Arabic zikr strings to cycle through.
+   */
+  startFloatingService: (azkarTexts: string[]): void => {
+    if (!_native) return;
+    try {
+      _native.startFloatingService(JSON.stringify(azkarTexts));
+      console.log("[AdhanAlarm] FloatingAzkarService started");
+    } catch (e) {
+      console.warn("[AdhanAlarm] startFloatingService error:", e);
+    }
+  },
+
+  /** Stop the FloatingAzkarService overlay. */
+  stopFloatingService: (): void => {
+    if (!_native) return;
+    try { _native.stopFloatingService(); } catch { /* ignore */ }
+  },
+
+  /**
+   * Returns true if the app has SYSTEM_ALERT_WINDOW permission
+   * (required to show floating overlay above other apps).
+   */
+  canDrawOverlays: (): boolean => {
+    if (!_native) return false;
+    try { return _native.canDrawOverlays(); } catch { return false; }
   },
 };

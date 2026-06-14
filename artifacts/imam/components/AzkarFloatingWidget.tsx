@@ -2,9 +2,12 @@
  * Azkar Floating Widget
  * Isolated component. Renders above all screens but below any Modal (e.g. prayer detection).
  * Uses PanResponder for drag + edge-snapping. Animated slide-in/out from side edge.
+ *
+ * Issues fixed:
+ *  - Beep sound on appear has been removed (was caused by explicit Audio.Sound.createAsync call)
+ *  - Widget is conditionally unmounted after hide animation completes, preventing ghost X button
  */
 
-import { Audio } from "expo-av";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -38,6 +41,11 @@ export function AzkarFloatingWidget() {
 
   const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
+  // ── Mounted state — widget is fully removed from the tree when not in use ──
+  // This prevents the invisible ✕ button from intercepting touches or appearing
+  // as a ghost element after the hide animation completes.
+  const [mounted, setMounted] = useState(false);
+
   // Track which side we're snapped to: -1 = left, +1 = right
   const [snapSide, setSnapSide] = useState<-1 | 1>(
     settings.position === "left" ? -1 : 1
@@ -66,44 +74,13 @@ export function AzkarFloatingWidget() {
     ],
   });
 
-  const translateXRef = useRef(translateX);
-  translateXRef.current = translateX;
-
   const nativeDrv = Platform.OS !== "web";
 
-  // ── Sound on appear ───────────────────────────────────────────────────────
-  const soundRef = useRef<Audio.Sound | null>(null);
-
-  useEffect(() => {
-    if (widgetVisible && currentZikr && Platform.OS !== "web") {
-      Audio.Sound.createAsync(
-        require("@/assets/audio/beep.wav"),
-        { volume: 0.5, shouldPlay: true }
-      )
-        .then(({ sound }) => {
-          soundRef.current = sound;
-          sound.setOnPlaybackStatusUpdate((status) => {
-            if (status.isLoaded && status.didJustFinish) {
-              sound.unloadAsync().catch(() => {});
-              soundRef.current = null;
-            }
-          });
-        })
-        .catch(() => {});
-    }
-
-    return () => {
-      if (soundRef.current) {
-        soundRef.current.stopAsync().catch(() => {});
-        soundRef.current.unloadAsync().catch(() => {});
-        soundRef.current = null;
-      }
-    };
-  }, [widgetVisible]);
-
-  // ── Show / hide animation ─────────────────────────────────────────────────
+  // ── Show / hide animation — unmounts after hide completes ─────────────────
   useEffect(() => {
     if (widgetVisible && currentZikr) {
+      // Mount immediately before animating in
+      setMounted(true);
       countdownAnim.setValue(1);
       Animated.parallel([
         Animated.spring(slideAnim,   { toValue: 1, useNativeDriver: nativeDrv, tension: 60, friction: 10 }),
@@ -115,10 +92,13 @@ export function AzkarFloatingWidget() {
         useNativeDriver: false,
       }).start();
     } else {
+      // Animate out then unmount — prevents ghost ✕ button
       Animated.parallel([
         Animated.timing(slideAnim,   { toValue: 0, duration: 220, useNativeDriver: nativeDrv }),
         Animated.timing(opacityAnim, { toValue: 0, duration: 200, useNativeDriver: nativeDrv }),
-      ]).start();
+      ]).start(({ finished }) => {
+        if (finished) setMounted(false);
+      });
     }
   }, [widgetVisible, currentZikr]);
 
@@ -142,6 +122,9 @@ export function AzkarFloatingWidget() {
       },
     })
   ).current;
+
+  // Don't render anything when not mounted — completely removes from layout tree
+  if (!mounted) return null;
 
   const fs = FONT_SIZES[settings.fontSize] ?? FONT_SIZES.medium;
 

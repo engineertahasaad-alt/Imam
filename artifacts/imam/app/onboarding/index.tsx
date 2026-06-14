@@ -54,8 +54,9 @@ export default function WelcomeScreen() {
         contentContainerStyle={[
           styles.container,
           {
-            paddingTop: insets.top + (Platform.OS === "web" ? 67 : 20),
-            paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 32),
+            paddingTop: insets.top + (Platform.OS === "web" ? 67 : 12),
+            paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 16),
+            flexGrow: 1,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -122,9 +123,9 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container:    { paddingHorizontal: 24, gap: 20 },
-  logoSection:  { alignItems: "center", gap: 8, marginBottom: 4 },
-  icon:         { width: 80, height: 80, borderRadius: 20 },
+  container:    { paddingHorizontal: 24, gap: 14 },
+  logoSection:  { alignItems: "center", gap: 6, marginBottom: 0 },
+  icon:         { width: 70, height: 70, borderRadius: 18 },
   appName:      { fontSize: 30, fontWeight: "700", letterSpacing: -0.5 },
   tagline:      { fontSize: 15 },
   privacyBanner:{

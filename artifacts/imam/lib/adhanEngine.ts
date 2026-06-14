@@ -7,8 +7,8 @@ import { CHANNEL_ADHAN, setupNotificationChannels } from "./notifications";
 
 export { AdhanVoice };
 
+// Alafasy (azan1) has been removed. Default voice is abdulbasit.
 export const ADHAN_VOICE_LABELS: Record<string, string> = {
-  alafasy:    "Mishary Rashid Alafasy",
   abdulbasit: "Abdul Basit Abd us-Samad",
   madinah:    "Madinah (Al-Masjid An-Nabawi)",
   makkah:     "Makkah (Al-Masjid Al-Haram)",
@@ -20,7 +20,6 @@ export const ADHAN_VOICE_LABELS: Record<string, string> = {
 
 // ─── Bundled local audio (fully offline) ─────────────────────────────────────
 const ADHAN_LOCAL_ASSETS: Record<string, any> = {
-  alafasy:    require("../assets/audio/azan1.mp3"),
   abdulbasit: require("../assets/audio/azan2.mp3"),
   madinah:    require("../assets/audio/azan3.mp3"),
   makkah:     require("../assets/audio/azan4.mp3"),
@@ -32,7 +31,6 @@ const ADHAN_LOCAL_ASSETS: Record<string, any> = {
 
 // Filenames used in notification payloads — must match app.json sounds array.
 const ADHAN_SOUND_FILES: Record<string, string> = {
-  alafasy:    "azan1.mp3",
   abdulbasit: "azan2.mp3",
   madinah:    "azan3.mp3",
   makkah:     "azan4.mp3",
@@ -57,7 +55,7 @@ export async function playAdhanInApp(voice: AdhanVoice, volume = 1.0): Promise<v
       staysActiveInBackground:  false,
       shouldDuckAndroid:        false,
     });
-    const asset  = ADHAN_LOCAL_ASSETS[voice] ?? ADHAN_LOCAL_ASSETS.alafasy;
+    const asset  = ADHAN_LOCAL_ASSETS[voice] ?? ADHAN_LOCAL_ASSETS.abdulbasit;
     const { sound } = await Audio.Sound.createAsync(asset, { shouldPlay: true, volume });
     currentSound = sound;
     sound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
@@ -95,7 +93,7 @@ export async function testAdhanPreview(voice: AdhanVoice, volume = 1.0): Promise
       staysActiveInBackground:  false,
       shouldDuckAndroid:        false,
     });
-    const asset = ADHAN_LOCAL_ASSETS[voice] ?? ADHAN_LOCAL_ASSETS.alafasy;
+    const asset = ADHAN_LOCAL_ASSETS[voice] ?? ADHAN_LOCAL_ASSETS.abdulbasit;
     const { sound } = await Audio.Sound.createAsync(asset, { shouldPlay: true, volume });
     currentSound = sound;
     // Auto-stop after 10 seconds for preview
@@ -130,7 +128,7 @@ export async function scheduleAdhanNotifications(
   try {
     await setupNotificationChannels();
     const channelId = CHANNEL_ADHAN(voice);
-    const soundFile = ADHAN_SOUND_FILES[voice] ?? "azan1.mp3";
+    const soundFile = ADHAN_SOUND_FILES[voice] ?? "azan2.mp3";
     const now = Date.now();
 
     for (const prayer of PRAYER_ORDER) {
