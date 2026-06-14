@@ -1,0 +1,403 @@
+You are a senior React Native, Expo, Android Notifications, Android Overlay Services, and Mobile Architecture engineer.
+
+Objective:
+Perform a complete investigation and fix all issues listed below without breaking any existing functionality.
+
+Critical Rules:
+
+* Do NOT make assumptions.
+* Do NOT modify unrelated code.
+* Do NOT remove existing features unless explicitly requested below.
+* Preserve all prayer calculations.
+* Preserve all notification scheduling logic.
+* Preserve iOS compatibility.
+* Preserve existing user settings and preferences whenever possible.
+* Before changing code, determine whether each issue is:
+
+  * A bug in the application.
+  * An Android limitation.
+  * An Expo limitation.
+  * A configuration issue.
+  * An architecture issue.
+
+If the issue is a bug:
+
+* Fix it completely.
+
+If the issue is an Expo limitation:
+
+* Do not stop at explaining the limitation.
+* Implement the best available solution.
+* If native code, a Development Build, or migration is required, perform the minimum necessary migration.
+* Deliver the closest possible working solution.
+
+IMPORTANT:
+
+Do NOT start modifying files immediately.
+
+Your FIRST response must contain ONLY:
+
+1. Root Cause Analysis
+2. Issue Classification
+3. Recommended Fix Plan
+4. Risks
+
+Do NOT modify any code until the analysis is complete.
+
+==================================================
+PHASE 1 — ROOT CAUSE ANALYSIS
+=============================
+
+Audit and analyze:
+
+1. Entire notifications architecture.
+2. Entire floating azkar architecture.
+3. Android permissions.
+4. Expo configuration.
+5. AndroidManifest configuration.
+6. Notification channels.
+7. Audio assets.
+8. Scheduled notifications.
+9. Overlay implementation.
+10. Foreground services.
+11. Layout and screen sizing.
+
+For every issue provide:
+
+* Root Cause
+* Bug or Limitation
+* Impact
+* Recommended Fix
+* Risk Level
+
+==================================================
+ISSUE #1 — ADHAN NOTIFICATION SHOWS BUT NO AUDIO PLAYS
+======================================================
+
+Current behavior:
+
+* Notification popup appears.
+* Adhan audio does not play.
+
+Possible cause:
+
+Android notification channels are immutable.
+If a channel was originally created without sound, Android ignores future sound updates.
+
+Required investigation:
+
+1. Audit notification channel creation.
+2. Audit notification scheduling.
+3. Audit audio asset loading.
+4. Audit Android-specific notification settings.
+5. Audit Expo notification implementation.
+
+Required fixes:
+
+1. Verify all audio files exist and are correctly bundled.
+
+2. Verify paths and asset registration.
+
+3. Verify app.json/app.config configuration.
+
+4. Verify Expo asset bundling.
+
+5. If channels currently use IDs such as:
+
+adhan_alafasy
+adhan_makkah
+adhan_madani
+
+Replace them with versioned IDs such as:
+
+adhan_makkah_v2
+adhan_madani_v2
+
+(or appropriate versioned IDs)
+
+to force Android to create fresh channels.
+
+6. Ensure every channel is created with:
+
+* HIGH importance
+* custom sound configured at creation time
+* vibration enabled when appropriate
+* proper Android settings
+
+7. Verify every scheduled notification uses the correct channel.
+
+8. Add diagnostic logging for:
+
+* channel creation
+* sound registration
+* scheduling
+* trigger execution
+
+9. Verify Expo Go limitations.
+
+10. If Development Build or Production Build is required,
+    configure accordingly.
+
+Success criteria:
+
+* Notification appears.
+* Correct Adhan audio plays.
+* No duplicate notifications.
+* No regression.
+
+==================================================
+ISSUE #2 — FLOATING AZKAR WORKS ONLY WHILE APP IS OPEN
+======================================================
+
+Current behavior:
+
+* Floating Azkar appears only while app is open.
+* It disappears when app is minimized.
+* It disappears when app is in background.
+* It disappears when user switches to another application.
+
+Required behavior:
+
+* Floating Azkar appears above all applications.
+* Works while app is minimized.
+* Works while app is in background.
+* Works while user is using other applications.
+* Behaves similarly to Messenger Chat Heads.
+
+Required investigation:
+
+1. Audit the entire Floating Azkar implementation.
+
+2. Determine whether the current implementation is:
+
+   * notification-based
+   * in-app overlay
+   * native overlay
+   * foreground service
+   * hybrid implementation
+
+3. Verify Android overlay permissions.
+
+4. Verify SYSTEM_ALERT_WINDOW support.
+
+5. Verify foreground service support.
+
+6. Verify Expo limitations.
+
+Mandatory requirement:
+
+Clearly determine whether this issue is:
+
+* A bug
+  OR
+* An Expo limitation
+
+Then solve it.
+
+If it is a bug:
+
+* Fix it completely.
+
+If it is an Expo limitation:
+
+* Implement the required native solution.
+* Perform the minimum migration required.
+* Deliver a working floating overlay solution.
+
+Success criteria:
+
+* Floating Azkar appears above all applications.
+* Floating Azkar works when the app is minimized.
+* Floating Azkar works when the app is in background.
+* Floating Azkar behaves like Messenger Chat Heads.
+
+==================================================
+ISSUE #3 — FLOATING AZKAR CLOSE TARGET (X) REMAINS VISIBLE
+==========================================================
+
+Current behavior:
+
+* Close target (X) remains visible even after the bubble disappears.
+
+Required fix:
+
+1. Audit overlay lifecycle.
+
+2. Audit drag lifecycle.
+
+3. Audit cleanup logic.
+
+4. Ensure X appears only while dragging.
+
+5. Ensure X disappears immediately when:
+
+   * dragging ends
+   * bubble closes
+   * bubble hides
+
+6. Ensure no orphan UI remains visible.
+
+==================================================
+ISSUE #4 — ANDROID "ALARMS AND REMINDERS" PERMISSION DISABLED
+=============================================================
+
+Current behavior:
+
+Android shows the "Alarms and Reminders" permission page,
+but the permission cannot be enabled or disabled.
+
+Required investigation:
+
+1. Audit AndroidManifest configuration.
+2. Audit Expo configuration.
+3. Audit Android SDK version.
+4. Audit exact alarm implementation.
+5. Verify:
+
+SCHEDULE_EXACT_ALARM
+
+and
+
+USE_EXACT_ALARM
+
+configuration.
+
+6. Verify Android requirements by SDK version.
+7. Explain exactly why Android disables the permission.
+
+Required fix:
+
+* Implement correct exact alarm support.
+* Ensure prayer notifications continue working correctly.
+
+==================================================
+ISSUE #5 — UNNECESSARY SCROLLING ON SOME SCREENS
+================================================
+
+Current behavior:
+
+Some screens require scrolling even though only a very small amount of content exceeds the visible area.
+
+Especially the first screen after installation.
+
+Required fix:
+
+1. Audit all screen layouts.
+2. Audit ScrollViews.
+3. Audit SafeArea layouts.
+4. Audit viewport sizing.
+5. Ensure screens properly occupy available height.
+6. Remove unnecessary scrolling.
+7. Keep scrolling only where genuinely required.
+8. Test on multiple Android screen sizes.
+
+==================================================
+ISSUE #6 — FLOATING AZKAR PRODUCES A BEEP SOUND
+===============================================
+
+Current behavior:
+
+Floating Azkar generates a beep sound.
+
+Required behavior:
+
+Floating Azkar must be completely silent.
+
+Required fix:
+
+1. Identify source of sound.
+2. Remove all sounds related to Floating Azkar.
+3. Remove notification sounds related to Floating Azkar.
+4. Disable vibration if unnecessary.
+5. Keep Adhan notifications functioning normally.
+6. Ensure Floating Azkar remains completely silent.
+
+==================================================
+ISSUE #7 — REMOVE ALAFASY ADHAN FROM THE APPLICATION
+====================================================
+
+Required change:
+
+Remove Alafasy Adhan completely from the application.
+
+Requirements:
+
+1. Identify every reference to Alafasy Adhan in the codebase.
+
+2. Remove:
+
+   * Alafasy audio files
+   * Alafasy notification channels
+   * Alafasy settings
+   * Alafasy selections in preferences
+   * Alafasy scheduling references
+   * Alafasy assets
+   * Alafasy imports
+
+3. Ensure removal does not break:
+
+   * notification scheduling
+   * user settings
+   * Adhan selection functionality
+   * audio playback functionality
+
+4. If users currently have Alafasy selected:
+
+   * automatically migrate them to the default Adhan
+   * prevent crashes and missing audio issues
+
+5. Remove unused code left behind.
+
+6. Update all settings screens and selection menus.
+
+Success criteria:
+
+* Alafasy Adhan no longer exists anywhere in the application.
+* No broken references remain.
+* No runtime errors occur.
+* Existing Adhan functionality continues working normally.
+
+==================================================
+FINAL DELIVERABLES
+==================
+
+After implementation provide:
+
+1. Root Cause Analysis for each issue.
+
+2. Classification of each issue:
+
+   * Bug
+   * Android Limitation
+   * Expo Limitation
+   * Configuration Issue
+   * Architecture Issue
+
+3. Files modified.
+
+4. Exact code changes.
+
+5. Risk assessment.
+
+6. Regression analysis.
+
+7. Complete testing checklist.
+
+8. Any remaining limitations.
+
+Provide explicit confirmation that:
+
+* Adhan audio works correctly.
+* Notification channels are correctly configured.
+* Floating Azkar works above all applications.
+* Floating Azkar works when the app is minimized.
+* Floating Azkar works when the app is in background.
+* Floating Azkar is completely silent.
+* Floating Azkar close target (X) behaves correctly.
+* Alarms and Reminders permission issue is resolved.
+* Screen layout issues are resolved.
+* Alafasy Adhan has been fully removed.
+* Existing functionality was not broken.
+
+Do not stop at analysis.
+Determine whether each issue is a bug or a platform limitation, and provide a working solution in either case.
