@@ -1,7 +1,7 @@
 {
   "cli": {
     "version": ">= 12.0.0",
-    "appVersionSource": "local"
+    "appVersionSource": "remote"
   },
   "build": {
     "base": {
@@ -34,8 +34,7 @@
       "resourceClass": "medium",
       "channel": "preview",
       "android": {
-        "buildType": "apk",
-        "autoIncrement": "versionCode"
+        "buildType": "apk"
       },
       "env": {
         "EXPO_PUBLIC_ENV": "preview"
@@ -47,8 +46,7 @@
       "resourceClass": "large",
       "channel": "production",
       "android": {
-        "buildType": "app-bundle",
-        "autoIncrement": "versionCode"
+        "buildType": "app-bundle"
       },
       "env": {
         "EXPO_PUBLIC_ENV": "production"

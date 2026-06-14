@@ -24,6 +24,8 @@ export interface TrainingSession {
   timestamp: number;
   quality: SessionQuality;
   qualityScore: number;
+  /** Alias for qualityScore (0–100) used by stats UI */
+  overallScore: number;
   features: MovementFeatures[];
   sessionDurationMs: number;
 }

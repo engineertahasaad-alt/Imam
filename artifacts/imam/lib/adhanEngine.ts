@@ -47,7 +47,7 @@ const ADHAN_SOUND_FILES: Record<string, string> = {
 let currentSound: Audio.Sound | null = null;
 
 /** Play the adhan audio inside the app (foreground). */
-export async function playAdhanInApp(voice: AdhanVoice): Promise<void> {
+export async function playAdhanInApp(voice: AdhanVoice, volume = 1.0): Promise<void> {
   if (Platform.OS === "web") return;
   try {
     await stopAdhan();
@@ -58,7 +58,7 @@ export async function playAdhanInApp(voice: AdhanVoice): Promise<void> {
       shouldDuckAndroid:        false,
     });
     const asset  = ADHAN_LOCAL_ASSETS[voice] ?? ADHAN_LOCAL_ASSETS.alafasy;
-    const { sound } = await Audio.Sound.createAsync(asset, { shouldPlay: true, volume: 1.0 });
+    const { sound } = await Audio.Sound.createAsync(asset, { shouldPlay: true, volume });
     currentSound = sound;
     sound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
       if (status.isLoaded && status.didJustFinish) {
@@ -85,7 +85,7 @@ export async function stopAdhan(): Promise<void> {
 }
 
 /** Play a short preview of the selected adhan voice (first 10 seconds). */
-export async function testAdhanPreview(voice: AdhanVoice): Promise<void> {
+export async function testAdhanPreview(voice: AdhanVoice, volume = 1.0): Promise<void> {
   if (Platform.OS === "web") return;
   try {
     await stopAdhan();
@@ -96,7 +96,7 @@ export async function testAdhanPreview(voice: AdhanVoice): Promise<void> {
       shouldDuckAndroid:        false,
     });
     const asset = ADHAN_LOCAL_ASSETS[voice] ?? ADHAN_LOCAL_ASSETS.alafasy;
-    const { sound } = await Audio.Sound.createAsync(asset, { shouldPlay: true, volume: 1.0 });
+    const { sound } = await Audio.Sound.createAsync(asset, { shouldPlay: true, volume });
     currentSound = sound;
     // Auto-stop after 10 seconds for preview
     setTimeout(async () => {

@@ -281,6 +281,7 @@ export function TrainingModal({
       timestamp:       Date.now(),
       quality,
       qualityScore:    score,
+      overallScore:    score,
       features,
       sessionDurationMs: STEPS.reduce((a, s) => a + s.recordMs + s.pauseBeforeMs, 0),
     };
